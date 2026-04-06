@@ -185,29 +185,32 @@ def load_mpeclib(filepath: str) -> Dict[str, Any]:
         except (TypeError, ValueError):
             return False
 
-    G_is_free = [
-        _is_free_lower(raw_lbG_values[i] if i < len(raw_lbG_values) else 0.0)
-        for i in range(n_comp)
-    ]
-    H_is_free = [
-        _is_free_lower(raw_lbH_values[i] if i < len(raw_lbH_values) else 0.0)
-        for i in range(n_comp)
-    ]
-
     lbG_eff = _sanitize_bounds(lbG_raw, 0.0)
     lbH_eff = _sanitize_bounds(lbH_raw, 0.0)
     ubG_fin = _sanitize_bounds(ubG_raw, _BIG)
     ubH_fin = _sanitize_bounds(ubH_raw, _BIG)
     ubG_finite = [(i, ubG_fin[i]) for i in range(n_comp) if ubG_fin[i] < _BIG]
-
     ubH_finite = [(i, ubH_fin[i]) for i in range(n_comp) if ubH_fin[i] < _BIG]
 
+    # Redefine what is "unsupported" based on finiteness, not just being 0.0
+    G_is_free = [
+        _is_free_lower(raw_lbG_values[i] if i < len(raw_lbG_values) else 0.0)
+        for i in range(n_comp)
+    ]
+    # We only reject if lbH is -inf (truly free/negative without a bound),
+    # because the homotopy model G*H <= t requires H >= 0 (after shifting).
+    H_is_truly_free = [
+        _is_free_lower(raw_lbH_values[i] if i < len(raw_lbH_values) else 0.0)
+        for i in range(n_comp)
+    ]
+
     unsupported_reasons = []
-    if any(H_is_free):
+    if any(H_is_truly_free):
         unsupported_reasons.append('free lower bounds on H are not supported by the homotopy model')
     if ubG_finite:
         unsupported_reasons.append('finite upper bounds on G are not supported by the homotopy model')
     unsupported_model_reason = '; '.join(unsupported_reasons) or None
+    H_is_free = H_is_truly_free # For backwards compatibility/logging if needed
 
     has_nonstandard = (
         any(G_is_free) or

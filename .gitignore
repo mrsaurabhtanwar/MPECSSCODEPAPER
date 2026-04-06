@@ -54,7 +54,6 @@ $outfile
 results/
 iteration_logs/
 *.csv
-*.json
 *.nl.json
 *.zip
 !benchmarks.zip

@@ -2100,11 +2100,15 @@ def _run_parallel_isolated(problem_files, loader_fn, args, results_dir, dataset_
                     p.join()
 
     # Empty any final messages just in case
-    while not result_queue.empty():
-        try:
-            result_queue.get_nowait()
-        except Exception:
-            break
+    # Note: Manager().Queue().empty() can raise _queue.Empty due to race conditions
+    try:
+        while not result_queue.empty():
+            try:
+                result_queue.get_nowait()
+            except Exception:
+                break
+    except Exception:
+        pass  # Ignore race condition errors during cleanup
 
     # Explicit manager shutdown to prevent orphaned server processes
     # This fixes "Terminated" issues under WSL/screen where atexit handlers

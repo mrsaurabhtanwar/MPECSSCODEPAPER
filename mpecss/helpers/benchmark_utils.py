@@ -1416,8 +1416,10 @@ def run_benchmark_main(loader_fn: Callable[[str], Dict[str, Any]], dataset_tag: 
     parser.add_argument("--no-shuffle",   dest="shuffle", action="store_false", 
                         help="Disable shuffling (process problems alphabetically)")
     parser.add_argument("--path",         type=str,   default=default_path,
-
                         help="Path to benchmark JSON directory")
+    parser.add_argument("--problem-list", type=str,   default=None,
+                        help="Path to a text file listing problem filenames (one per line). "
+                             "Lines starting with '#' are ignored. Use this to run a subset of problems.")
     parser.add_argument("--num-problems", type=int,   default=None,
                         help="Limit to first N problems (useful for quick official test runs, e.g., --num-problems 10)")
     parser.add_argument("--resume",       type=str,   help="Path to existing CSV results to resume from")
@@ -1442,6 +1444,22 @@ def run_benchmark_main(loader_fn: Callable[[str], Dict[str, Any]], dataset_tag: 
         return
 
     problem_files = [f for f in os.listdir(args.path) if f.endswith(".json")]
+
+    # Filter by problem list file if specified
+    if getattr(args, 'problem_list', None):
+        if not os.path.isfile(args.problem_list):
+            logger.error(f"Problem list file not found: {args.problem_list}")
+            return
+        with open(args.problem_list, 'r', encoding='utf-8') as f:
+            allowed_problems = set()
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#'):
+                    allowed_problems.add(line)
+        original_count = len(problem_files)
+        problem_files = [f for f in problem_files if f in allowed_problems]
+        logger.info(f"Filtered by problem list ({args.problem_list}): {len(problem_files)} of {original_count} problems selected.")
+
     if args.sort_by_size:
         # Sort problems by file size (ascending) so small problems run first.
         # This gives the user early feedback and makes it easy to see which

@@ -217,6 +217,7 @@ $n \leq 400$ variables, when qpOASES is available.
 Interior-point methods remain the
 default because they are the most robust across the full range of MPEC
 structures~\cite{RaghunnathanBiegler2005,LeyfferLopezCalvaNocedal2006}.
+For problems with $n \geq 500$, CasADi's MX symbolic type is used with reverse-mode automatic differentiation (\texttt{ad\_weight}$=1.0$), reducing Jacobian memory consumption from $O(n_x \times 64)$ to $O(n_g)$ compared to forward-mode; additionally, an LRU cache with automatic eviction is employed for solver templates and Jacobian functions to ensure stable memory usage during long benchmark campaigns.
 
 When the primary solve fails (e.g., due to infeasibility detection,
 restoration failure, or numerical errors), MPECSS applies an automatic

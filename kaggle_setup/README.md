@@ -1,70 +1,79 @@
-# Kaggle Setup For Org-MPECSS
+# MPECSS Kaggle Benchmark Setup
 
-This folder is the Kaggle-ready package for running the current `Org-MPECSS` benchmarks.
+This folder contains everything needed to run MPECSS benchmarks on Kaggle.
 
-It now matches the live benchmark flow in the repository:
-- current dataset runners in `Org-MPECSS/scripts/`
-- current preflight checks in `Org-MPECSS/scripts/preflight_checks.py`
-- Kaggle-friendly resume helper in `kaggle_setup/resumable_benchmark.py`
-- regenerated notebooks that work with multiple Kaggle accounts
+## Quick Start
 
-## What Is Here
+1. **Go to [Kaggle](https://www.kaggle.com)** and create a new notebook
+2. **Add the dataset**: Search for `mrsaurabhtanwar/mpecss-benchmarks`
+3. **Upload a notebook** from this folder (see table below)
+4. **Run all cells**
 
-`MPECSS_Kaggle_Benchmark.ipynb`
-- configurable single-notebook template
-- choose `mpeclib`, `macmpec`, or `nosbench`
+## Available Notebooks
 
-`notebooks/`
-- five fixed notebooks for parallel Kaggle accounts
-- `MPECSS_Kaggle_MPECLib.ipynb`
-- `MPECSS_Kaggle_MacMPEC.ipynb`
-- `MPECSS_Kaggle_NosBench1.ipynb`
-- `MPECSS_Kaggle_NosBench2.ipynb`
-- `MPECSS_Kaggle_NosBench3.ipynb`
+| Notebook | Dataset | Problems | Estimated Time |
+|----------|---------|----------|----------------|
+| `MPECSS_Kaggle_MPECLib.ipynb` | MPECLib | 92 | ~4-6 hours |
+| `MPECSS_Kaggle_MacMPEC.ipynb` | MacMPEC | 92 | ~4-6 hours |
+| `MPECSS_Kaggle_NosBench_Group1.ipynb` | NosBench Group 1 | 201 | ~8-10 hours |
+| `MPECSS_Kaggle_NosBench_Group2.ipynb` | NosBench Group 2 | 201 | ~8-10 hours |
+| `MPECSS_Kaggle_NosBench_Group3.ipynb` | NosBench Group 3 | 201 | ~8-10 hours |
 
-`resumable_benchmark.py`
-- thin wrapper over the real benchmark runners
-- supports `--resume-latest`
-- supports `--summary-only`
+**Note:** NosBench is split into 3 groups to fit within Kaggle's 12-hour limit. Run them on 3 separate Kaggle instances in parallel.
 
-`generate_notebooks.py`
-- rebuilds the template notebook and the five fixed notebooks
+## Folder Structure
 
-## Supported Repo Source Modes On Kaggle
+```
+kaggle_setup/
+├── README.md                           # This file
+├── QUICK_START.md                      # Step-by-step instructions
+│
+├── MPECSS_Kaggle_MPECLib.ipynb        # MPECLib benchmark notebook
+├── MPECSS_Kaggle_MacMPEC.ipynb        # MacMPEC benchmark notebook
+├── MPECSS_Kaggle_NosBench_Group1.ipynb # NosBench Group 1 notebook
+├── MPECSS_Kaggle_NosBench_Group2.ipynb # NosBench Group 2 notebook
+├── MPECSS_Kaggle_NosBench_Group3.ipynb # NosBench Group 3 notebook
+│
+├── resumable_benchmark.py              # Benchmark runner with resume support
+│
+├── nosbench_splits/                    # Problem lists for NosBench groups
+│   ├── nosbench_group1_problems.txt
+│   ├── nosbench_group2_problems.txt
+│   └── nosbench_group3_problems.txt
+│
+└── scripts/
+    └── merge_results.py                # Merge results from multiple runs
+```
 
-The notebooks no longer assume one hardcoded GitHub URL. Each notebook can prepare the repo from any one of these sources:
+## Kaggle Dataset
 
-1. Public Git URL
-2. Uploaded `Org-MPECSS.zip`
-3. Kaggle dataset containing `Org-MPECSS` or `Org-MPECSS.zip`
+The benchmarks require the `mpecss-benchmarks` dataset:
+- **URL**: https://www.kaggle.com/datasets/mrsaurabhtanwar/mpecss-benchmarks
+- **Contains**: Pre-converted JSON problem files for all 3 benchmark suites
 
-That is the key change that makes the setup usable across different Kaggle accounts.
+## Features
 
-## Recommended Use
+- **Resume support**: If Kaggle restarts, re-run cells 1-3 then use the "Resume" cell
+- **Progress tracking**: Use the "Summary" cell to check progress
+- **Parallel execution**: Run multiple notebooks on different Kaggle accounts simultaneously
 
-For one Kaggle account:
-- upload `MPECSS_Kaggle_Benchmark.ipynb`
-- set the repo source in the config cell
-- choose the dataset in the config cell
-- run the cells in order
+## After Running
 
-For multiple Kaggle accounts:
-- use the notebooks under `notebooks/`
-- put one notebook on each account
-- use the same public Git URL or the same uploaded ZIP/dataset on each account
+1. Download results from `/kaggle/working/outputs/`
+2. For NosBench, merge the 3 group CSVs using `scripts/merge_results.py`
 
-## First Files To Read
+## Troubleshooting
 
-- `START_HERE.md`
-- `KAGGLE_SETUP_GUIDE.md`
-- `PARALLEL_EXECUTION_GUIDE.md`
-- `QUICK_REFERENCE.md`
+| Issue | Solution |
+|-------|----------|
+| "Dataset not found" | Add `mpecss-benchmarks` dataset to your notebook |
+| "Module not found" | Re-run the install cell (Cell 3) |
+| Session timeout | Use the Resume cell after restart |
+| 0 problems found | Check the `--path` points to correct directory |
 
-## Validation Status
+## Requirements
 
-This Kaggle package was refreshed against the current repository on April 6, 2026:
-- preflight flow in `Org-MPECSS/scripts/preflight_checks.py`
-- benchmark wrapper in `Org-MPECSS/scripts/run_*_benchmark.py`
-- current solver and benchmark code under `Org-MPECSS/mpecss/`
-
-The helper scripts in `kaggle_setup/` compile locally, and the notebooks are generated from the refreshed sources in this folder.
+- Kaggle account (free tier works)
+- Internet enabled (for git clone)
+- ~30 GB disk space
+- 4 CPU cores (Kaggle default)

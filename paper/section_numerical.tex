@@ -60,7 +60,7 @@ execution.\footnote{%
   To ensure single-threaded, deterministic execution, the environment
   variables \texttt{OMP\_NUM\_THREADS}, \texttt{MKL\_NUM\_THREADS},
   \texttt{OPENBLAS\_NUM\_THREADS}, and \texttt{NUMEXPR\_NUM\_THREADS}
-  are all set to~1.}
+  are all set to~1. On Windows, process-level isolation via \texttt{multiprocessing.Process} with spawn context is used since signal-based timeouts cannot interrupt blocking IPOPT calls.}
 Problems that exceed this limit are recorded as \emph{timeout}.
 The benchmark runner is executed with random seed~42 for
 reproducibility; when the core solver is called directly, its
@@ -80,6 +80,10 @@ Complementarity tolerance& $\varepsilon_{\mathrm{tol}}$ & $10^{-6}$ & Convergenc
 Stationarity tolerance   & $\tau$             & $10^{-6}$   & Sign-test tolerance \\
 Maximum outer iterations & $k_{\max}$         & $3000$      & Phase~II iteration cap \\
 Restoration strategy     & ---                & cascade     & R1 $\to$ R2 $\to$ R3 \\
+Max restorations         & ---                & $50$        & Hard cap on restoration calls \\
+Restoration stag.\ window & ---               & $8$         & Consecutive failures before stagnation \\
+Restoration-comp factor  & ---                & $10$        & Skip restore if $r < 10\varepsilon_{\mathrm{tol}}$ \\
+Floor stagnation window  & ---                & $20$        & Exit if $t_k=10^{-14}$ unchanged \\
 Adaptive update          & ---                & enabled     & product-residual and stagnation based $t$-control \\
 Steering (sign test)     & ---                & enabled     & S-stationarity diagnostic plus Phase~III certification \\
 Wall-clock limit         & $T_{\max}$         & $3600\,$s   & Per-problem timeout \\
@@ -89,7 +93,7 @@ Benchmark seed           & ---                & 42          & Benchmark-runner r
 \label{tab:params}
 \end{table}
 
-The benchmark utility writes a detailed CSV row for every instance together with a per-run environment JSON recording the command line, package versions, and hardware configuration. In addition to standard convergence fields, the logger records timing splits, active-set diagnostics, and failure metadata. Partial results are flushed to disk under interrupts so that long campaigns can be resumed without losing completed instances.
+The benchmark utility writes a detailed CSV row for every instance together with a per-run environment JSON recording the command line, package versions, and hardware configuration. In addition to standard convergence fields, the logger records 249 columns per problem including per-iteration diagnostics (residuals, multiplier bounds, biactive counts, regime labels), phase-level timing splits, solver fallback flags, best-point tracking, and failure metadata. Partial results are flushed to disk under interrupts so that long campaigns can be resumed without losing completed instances.
 
 Each problem is assigned one of the following outcome classifications based on the solver's termination status and stationarity certificate:
 (i)~\emph{B-stationary}---the solver reports \texttt{converged} and the Phase~III LICQ/LPEC verification certifies B-stationarity;

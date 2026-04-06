@@ -11,7 +11,7 @@ Adds Kaggle-specific features:
   --skip-preflight  Skip the preflight checks
 
 Usage from a Kaggle notebook:
-    !python kaggle_setup/resumable_benchmark.py --dataset mpeclib --repo-dir /kaggle/working/Org-MPECSS --workers 4
+    !python kaggle_setup/resumable_benchmark.py --dataset mpeclib --repo-dir /kaggle/working/MPECSSCODEPAPER --workers 4
 """
 
 from __future__ import annotations
@@ -108,6 +108,9 @@ def main() -> int:
     parser.add_argument("--no-shuffle", dest="shuffle", action="store_false")
     parser.add_argument("--path", type=str, default=None,
                         help="Override the benchmark JSON directory path.")
+    parser.add_argument("--problem-list", type=str, default=None,
+                        help="Path to a text file listing problem filenames (one per line). "
+                             "Use this to run a subset of problems (e.g., for splitting large benchmarks).")
     parser.add_argument("--skip-preflight", action="store_true")
     parser.add_argument("--resume-latest", action="store_true",
                         help="Automatically find and resume from the latest CSV.")
@@ -224,6 +227,8 @@ def main() -> int:
         injected_args.append("--no-shuffle")
     if args.retry_failed:
         injected_args.append("--retry-failed")
+    if args.problem_list:
+        injected_args.extend(["--problem-list", args.problem_list])
 
     # Handle --resume-latest
     if args.resume_latest:

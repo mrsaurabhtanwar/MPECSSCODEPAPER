@@ -81,14 +81,16 @@ def _make_base_cells(dataset, run_tag, expected_problems, has_group_prep=False,
         "source": [
             "## 1. Configuration\n",
             "\n",
-            "The notebook is pre-configured to clone from GitHub. Adjust `WORKERS`,\n",
-            "`TIMEOUT`, or other settings below if needed.\n"
+            "The notebook is pre-configured to clone from GitHub. If you have attached\n",
+            "the `mpecss-benchmarks` Kaggle dataset, it will be auto-detected.\n"
         ]
     })
 
-    path_override = ""
+    # Data detection logic
+    dataset_input_path = f"/kaggle/input/mpecss-benchmarks/benchmarks/{dataset}/{dataset}-json"
     if group_num:
-        path_override = f"/kaggle/working/Org-MPECSS/benchmarks/nosbench/nosbench-json-group{group_num}"
+        # NosBench groups are handled by copying from the full json dir
+        dataset_input_path = f"/kaggle/input/mpecss-benchmarks/benchmarks/nosbench/nosbench-json"
 
     config_source = [
         "# Notebook configuration\n",
@@ -105,7 +107,10 @@ def _make_base_cells(dataset, run_tag, expected_problems, has_group_prep=False,
         "SORT_BY_SIZE = False\n",
         "SHUFFLE = True\n",
         "RETRY_FAILED_ON_RESUME = False\n",
-        f"DATASET_PATH_OVERRIDE = '{path_override}'\n",
+        "\n",
+        "# Data Source: Set to None to use repo benchmarks, or path to Kaggle dataset\n",
+        "import os\n",
+        f"KAGGLE_DATASET_PATH = '{dataset_input_path}' if os.path.exists('{dataset_input_path}') else None\n",
         "\n",
         "# Repository source - always clone fresh from GitHub\n",
         "REPO_DIR = \"/kaggle/working/Org-MPECSS\"\n",
@@ -176,7 +181,7 @@ def _make_base_cells(dataset, run_tag, expected_problems, has_group_prep=False,
         ]
     })
 
-    # -- NosBench group prep (only for group notebooks) --
+    # -- NosBench group prep or general data setup --
     step_number = 4
     if has_group_prep and group_problems and group_num:
         escaped = "\\n".join(group_problems)
@@ -195,11 +200,13 @@ def _make_base_cells(dataset, run_tag, expected_problems, has_group_prep=False,
                 "import shutil\n",
                 "\n",
                 f"GROUP_PROBLEMS = \"\"\"{escaped}\"\"\"\n",
-                f"SRC_DIR = \"/kaggle/working/Org-MPECSS/benchmarks/nosbench/nosbench-json\"\n",
+                "# Use Kaggle dataset if available, otherwise use repo benchmarks\n",
+                f"SRC_DIR = KAGGLE_DATASET_PATH if KAGGLE_DATASET_PATH else \"/kaggle/working/Org-MPECSS/benchmarks/nosbench/nosbench-json\"\n",
                 f"DST_DIR = \"/kaggle/working/Org-MPECSS/benchmarks/nosbench/nosbench-json-group{group_num}\"\n",
                 "\n",
                 "os.makedirs(DST_DIR, exist_ok=True)\n",
                 "\n",
+                "print(f\"Using source directory: {SRC_DIR}\")\n",
                 "copied = 0\n",
                 "for entry in GROUP_PROBLEMS.strip().splitlines():\n",
                 "    problem_name = entry.strip()\n",
@@ -211,7 +218,29 @@ def _make_base_cells(dataset, run_tag, expected_problems, has_group_prep=False,
                 "        shutil.copy2(src, dst)\n",
                 "        copied += 1\n",
                 "\n",
-                f"print(f\"Prepared NosBench Group {group_num}: {{copied}} / {expected_problems} problems\")\n"
+                f"print(f\"Prepared NosBench Group {group_num}: {{copied}} / {expected_problems} problems\")\n",
+                f"DATASET_PATH = DST_DIR\n"
+            ]
+        })
+        step_number += 1
+    else:
+        # For non-group datasets, just set the DATASET_PATH
+        cells.append({
+            "cell_type": "markdown",
+            "metadata": {},
+            "source": [f"## {step_number}. Data Path Setup\n"]
+        })
+        cells.append({
+            "cell_type": "code",
+            "execution_count": None,
+            "metadata": {},
+            "outputs": [],
+            "source": [
+                "import os\n",
+                f"DATASET_PATH = KAGGLE_DATASET_PATH if KAGGLE_DATASET_PATH else \"/kaggle/working/Org-MPECSS/benchmarks/{dataset}/{dataset}-json\"\n",
+                "print(f\"Using benchmark directory: {DATASET_PATH}\")\n",
+                "if not os.path.exists(DATASET_PATH):\n",
+                "    print(f\"[ERROR] Benchmark path not found: {DATASET_PATH}\")\n"
             ]
         })
         step_number += 1
@@ -317,8 +346,8 @@ def _make_base_cells(dataset, run_tag, expected_problems, has_group_prep=False,
             "        command.extend([\"--num-problems\", str(NUM_PROBLEMS)])\n",
             "    if MEM_LIMIT_GB is not None:\n",
             "        command.extend([\"--mem-limit-gb\", str(MEM_LIMIT_GB)])\n",
-            "    if DATASET_PATH_OVERRIDE:\n",
-            "        command.extend([\"--path\", DATASET_PATH_OVERRIDE])\n",
+            "    if DATASET_PATH:\n",
+            "        command.extend([\"--path\", str(DATASET_PATH)])\n",
             "    if RETRY_FAILED_ON_RESUME:\n",
             "        command.append(\"--retry-failed\")\n",
             "    if resume_latest:\n",
@@ -472,15 +501,19 @@ def main():
     print("Generating Kaggle notebooks...")
     os.makedirs(NOTEBOOKS_DIR, exist_ok=True)
 
-    # MPECLib
+def main():
+    print("Generating Kaggle notebooks...")
+    os.makedirs(NOTEBOOKS_DIR, exist_ok=True)
+
+    # 1. MPECLib
     cells = _make_base_cells("mpeclib", "Kaggle_MPECLib", 92)
     _write_notebook(_make_notebook(cells), NOTEBOOKS_DIR / "MPECSS_Kaggle_MPECLib.ipynb")
 
-    # MacMPEC
+    # 2. MacMPEC
     cells = _make_base_cells("macmpec", "Kaggle_MacMPEC", 191)
     _write_notebook(_make_notebook(cells), NOTEBOOKS_DIR / "MPECSS_Kaggle_MacMPEC.ipynb")
 
-    # NosBench groups
+    # 3. NosBench groups
     for g in [1, 2, 3]:
         problems = _read_nosbench_group(g)
         cells = _make_base_cells(
@@ -493,7 +526,41 @@ def main():
         )
         _write_notebook(_make_notebook(cells), NOTEBOOKS_DIR / f"MPECSS_Kaggle_NosBench{g}.ipynb")
 
-    print(f"\nDone! Generated 5 notebooks in {NOTEBOOKS_DIR}")
+    # 4. Master template
+    template_cells = _make_base_cells("mpeclib", "Kaggle_Benchmark", 92)
+    # Tweak the first config cell of the template to be more generic
+    template_config = [
+        "# ┌─────────────────────────────────────────────────┐\n",
+        "# │  CHANGE THIS to run a different benchmark suite  │\n",
+        "# └─────────────────────────────────────────────────┘\n",
+        "DATASET = 'mpeclib'  # Options: 'mpeclib', 'macmpec', 'nosbench'\n",
+        "RUN_TAG = f'Kaggle_{DATASET.title()}'\n",
+        "EXPECTED_PROBLEMS = None\n",
+        "\n",
+        "WORKERS = 4  # Match Kaggle's 4 CPU cores\n",
+        "TIMEOUT = 3600\n",
+        "NUM_PROBLEMS = None\n",
+        "PROBLEM_FILTER = \"\"\n",
+        "MEM_LIMIT_GB = None\n",
+        "SAVE_LOGS = True\n",
+        "SORT_BY_SIZE = False\n",
+        "SHUFFLE = True\n",
+        "RETRY_FAILED_ON_RESUME = False\n",
+        "\n",
+        "# Data Source Detection\n",
+        "import os\n",
+        "def _get_input_path(ds):\n",
+        "    return f'/kaggle/input/mpecss-benchmarks/benchmarks/{ds}/{ds}-json'\n",
+        "KAGGLE_DATASET_PATH = _get_input_path(DATASET) if os.path.exists(_get_input_path(DATASET)) else None\n",
+        "\n",
+        "# Repository source - always clone fresh from GitHub\n",
+        "REPO_DIR = \"/kaggle/working/Org-MPECSS\"\n",
+        f"REPO_GIT_URL = \"{REPO_GIT_URL}\"\n",
+    ]
+    template_cells[2]["source"] = template_config
+    _write_notebook(_make_notebook(template_cells), KAGGLE_DIR / "MPECSS_Kaggle_Benchmark.ipynb")
+
+    print(f"\nDone! Generated 6 notebooks in {KAGGLE_DIR}")
 
 
 if __name__ == "__main__":

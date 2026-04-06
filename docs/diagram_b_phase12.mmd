@@ -1,0 +1,116 @@
+%% MPEC-SS Algorithm Workflow - Diagram B: Phase I / Early Check / Phase II
+%% Version 1.0.4 | Node count: 48
+%% Render at: https://mermaid.live
+
+flowchart TB
+    subgraph PHASE1["PHASE I: Feasibility"]
+        P1_START([Start]) --> P1_SIZE{n_x > 3000?}
+        P1_SIZE -->|Yes| P1_SKIP[Skip - too large]
+        P1_SIZE -->|No| P1_PUSH[Interior Push<br/>frac=0.1]
+        P1_PUSH --> P1_ATT[Attempt Loop<br/>0: L2 prod<br/>1: smooth L1<br/>2: epigraph]
+        P1_ATT --> P1_MS{comp > 1e-4?}
+        P1_MS -->|Yes| P1_MULTI[Multistart<br/>lb/ub/mid/perturb]
+        P1_MS -->|No| P1_OUT
+        P1_MULTI --> P1_OUT[Return z_feas]
+        P1_SKIP --> P1_OUT
+    end
+
+    P1_OUT --> EC_CHECK
+
+    subgraph EARLY["Early Stationarity Check"]
+        EC_CHECK{comp <= 100*eps?}
+        EC_CHECK -->|No| P2_ENTRY
+        EC_CHECK -->|Yes| EC_NLP[Solve NLP at small t<br/>get multipliers]
+        EC_NLP --> EC_EVAL[Sign test eval]
+        EC_EVAL --> EC_SSTAT{sign_pass AND<br/>comp <= eps?}
+        EC_SSTAT -->|Yes| EC_SKIP_S[S-candidate<br/>skip Phase II]
+        EC_SSTAT -->|No| EC_CSTAT{comp <= eps<br/>AND NOT sign?}
+        EC_CSTAT -->|Yes| EC_BIACT{biactive <= 15?}
+        EC_BIACT -->|Yes| EC_SKIP_C[C-stat skip<br/>cheap LPEC]
+        EC_BIACT -->|No| EC_P2[Run Phase II<br/>shrink biactive]
+        EC_CSTAT -->|No| EC_P2
+    end
+
+    EC_SKIP_S --> P3_ENTRY
+    EC_SKIP_C --> P3_ENTRY
+    EC_P2 --> T_FF
+
+    subgraph TFAST["T Fast-Forward"]
+        T_FF{comp < t_k?}
+        T_FF -->|Yes| T_ADJ[t_k = max<br/>comp*10, eps*tau]
+        T_FF -->|No| P2_LOOP
+        T_ADJ --> P2_LOOP
+    end
+
+    P2_ENTRY --> T_FF
+
+    subgraph PHASE2["PHASE II: Homotopy Loop"]
+        P2_LOOP[for k in max_outer] --> WALL{timeout?}
+        WALL -->|Yes| WALL_X>solver_fail]
+        WALL -->|No| NLP[NLP + Fallbacks<br/>IPOPT/MUMPS]
+        NLP --> NLP_OK{success?}
+        NLP_OK -->|No| NLP_X>solver_fail]
+        NLP_OK -->|Yes| STAT[Eval stationarity<br/>extract mults]
+        STAT --> BEST[Update best point]
+        BEST --> REST{restore?<br/>NOT sign AND<br/>comp > 10*eps}
+        REST -->|Yes| CASCADE[Cascade:<br/>perturb/escape/reg]
+        REST -->|No| CONV
+        CASCADE --> REST_CHK{max rest?}
+        REST_CHK -->|Yes| REST_X>solver_fail]
+        REST_CHK -->|No| CONV
+        CONV{comp <= eps<br/>AND sign?}
+        CONV -->|Yes| CONV_OK[Exit to Phase III]
+        CONV -->|No| T_UPD
+    end
+
+    subgraph TUPDATE["T-Update"]
+        T_UPD[compute_next_t] --> T_REG{regime}
+        T_REG -->|superlin| T_S[t = kappa^2 * t]
+        T_REG -->|fast| T_F[t = 0.5 * t]
+        T_REG -->|adapt_jump| T_J[t = kappa^2 * t]
+        T_REG -->|post_stag| T_PS[t = 0.5 * t]
+        T_REG -->|slow| T_SL[t = kappa * t]
+        T_S --> FLOOR
+        T_F --> FLOOR
+        T_J --> JUMP_CHK{jumps >= 500?}
+        JUMP_CHK -->|Yes| JUMP_X>solver_fail]
+        JUMP_CHK -->|No| FLOOR
+        T_PS --> FLOOR
+        T_SL --> FLOOR
+        FLOOR{t < 1e-14?}
+        FLOOR -->|Yes| CLAMP[t = 1e-14]
+        FLOOR -->|No| NEXT
+        CLAMP --> FLOOR_STAG{stuck 20 iter?}
+        FLOOR_STAG -->|Yes| FLOOR_X>exit loop]
+        FLOOR_STAG -->|No| NEXT
+        NEXT[next iteration] --> P2_LOOP
+    end
+
+    WALL_X --> POST
+    NLP_X --> POST
+    REST_X --> POST
+    JUMP_X --> POST
+    FLOOR_X --> POST
+    CONV_OK --> POST
+
+    subgraph POSTLOOP["Post-Loop"]
+        POST{best comp <= eps?}
+        POST -->|Yes| POST_OK[Use best.z]
+        POST -->|No| POST_X>solver_fail]
+    end
+
+    POST_OK --> P3_ENTRY([To Phase III])
+    POST_X --> FAIL_OUT([FAIL])
+
+    classDef phase    fill:#dbeafe,stroke:#1d4ed8,stroke-width:2px,color:#1e3a8a
+    classDef success  fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#14532d
+    classDef failure  fill:#fee2e2,stroke:#dc2626,stroke-width:2px,color:#7f1d1d
+    classDef decision fill:#fef9c3,stroke:#ca8a04,stroke-width:1px,color:#713f12
+    classDef process  fill:#f3e8ff,stroke:#9333ea,stroke-width:1px,color:#581c87
+    classDef guard    fill:#ffedd5,stroke:#ea580c,stroke-width:1px,color:#7c2d12
+    classDef bypass   fill:#ecfdf5,stroke:#059669,stroke-width:2px,color:#065f46
+
+    class PHASE1,PHASE2,EARLY,TUPDATE phase
+    class EC_SKIP_S,EC_SKIP_C,CONV_OK,POST_OK bypass
+    class WALL_X,NLP_X,REST_X,JUMP_X,FLOOR_X,POST_X failure
+    class EC_CHECK,EC_SSTAT,EC_CSTAT,EC_BIACT,WALL,NLP_OK,REST,CONV,T_REG,FLOOR,FLOOR_STAG,POST,REST_CHK,JUMP_CHK,T_FF decision

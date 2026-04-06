@@ -1,0 +1,137 @@
+\section{Introduction}
+\label{sec:intro}
+
+
+Mathematical Programs with Equilibrium Constraints
+(MPECs), equivalently referred to as Mathematical Programs with Complementarity Constraints (MPCCs),\footnote{While the literature often uses MPEC and MPCC interchangeably, we adopt the term MPEC throughout this paper for consistency.} are optimization problems~\citep{LuoPangRalph1996,OutrataKocvaraZowe1998,ScheelScholtes2000} that arise in a wide range of applications, including bilevel optimization~\cite{Dempe2002,ColsonMarcotteSavard2007}, noncooperative game theory~\cite{LeyfferMunson2010,HuRalph2007}, contact mechanics~\cite{OutrataKocvaraZowe1998, KlarbringBjorkman1988}, traffic flow equilibrium~\cite{FerrisPang1997,MengYangBell2001}, nonsmooth optimal control~\cite{NurkanovicPozharskiyDiehl2024}, and chemical engineering process optimization~\cite{BaumruckerBiegler2008}.
+
+Luo et al.~\cite{LuoPangRalph1996} established the formal
+study of MPECs and formulated their foundational theory.
+% Scheel and Scholtes~\cite{ScheelScholtes2000} subsequently formalized
+% the MPEC stationarity hierarchy---introducing the concepts of W-, C-, M-,
+% and S-stationarity---to characterize optimality in the absence of standard
+% constraint qualifications (such as LICQ and MFCQ), which necessarily fail
+% at every feasible point of an MPEC, rendering classical KKT theory
+% inapplicable. 
+In general, a standard MPEC can be formulated as follows~\cite{Ye2005}:
+\begin{equation}
+\begin{aligned}
+  &\min_{x \in \mathbb{R}^n} \quad && f(x) \\
+  &\text{subject to} \quad && g_i(x) \leq 0, \quad i = 1, \ldots, m, \\
+  & && h_j(x) = 0, \quad j = 1, \ldots, p, \\
+  & && G_\ell(x) \geq 0, \quad H_\ell(x) \geq 0, \quad \ell = 1, \ldots, q, \\
+  & && G_\ell(x)^{\top} H_\ell(x) = 0, \quad \ell = 1, \ldots, q.
+\end{aligned}
+\label{eq:general_mpec}
+\end{equation}
+Here, $f(x)$ is the objective function, $g_i(x)$ and $h_j(x)$ represent
+the standard inequality and equality constraints respectively.
+
+The fundamental difficulty arising from complementarity constraints is
+that standard constraint qualifications such as Linear Independence Constraint
+Qualification (LICQ) and Mangasarian--Fromovitz Constraint Qualification
+(MFCQ) are violated at all feasible points~\citep{ScheelScholtes2000}.
+Consequently, classical KKT condition is failed, and
+standard Nonlinear Programming (NLP) solvers applied directly
+to~\eqref{eq:general_mpec} will not find valid solutions. 
+To overcome this computational barrier several specialized algorithms have been developed over the past two decades. Notable developments include regularization
+techniques~\cite{Scholtes2001,LinFukushima2005,Kadrani2009,SteffensenUlbrich2010}, sequential quadratic programming (SQP)
+approaches~\cite{FletcherLeyffer2004,FletcherLeyfferRalphScholtes2006}, penalty
+methods~\cite{HuRalph2004,Anitescu2005}, and interior-point
+strategies~\cite{RaghunnathanBiegler2005,LeyfferLopezCalvaNocedal2006}.
+
+% Several stationary points have been developed, among
+% these, \emph{Bouligand (B-) stationarity} is particularly meaningful
+% from a practical perspective: a B-stationary point admits no feasible
+% descent direction in the tangent cone sense, making it a genuine
+% first-order necessary condition for local optimality. Stronger (S-) stationarity is
+% equivalent to B-stationarity under MPEC-LICQ and can be verified by 
+% a fast algebraic test on multiplier signs, making it practical to 
+% certify strong optimality at each iteration. The
+% weaker \emph{Clarke (C-) stationarity} places no restriction on the
+% signs of biactive complementarity multipliers, and C-stationary points
+% can include saddle points or even local maxima that allow feasible
+% descent directions. Standard solving methods often find weaker C-stationary points that are
+% not genuinely optimal~\cite{HoheiselKanzowSchwartz2013}, making proper
+% B-stationarity a vital algorithmic objective.
+
+The most widely used approach for solving MPECs is \emph{Scholtes
+regularization}~\cite{Scholtes2001}, which replaces the hard
+complementarity product $G_\ell(x) \cdot H_\ell(x) = 0$ with the
+relaxed condition $G_\ell(x) \cdot H_\ell(x) \leq t_k$, and drives
+$t_k \to 0$ by solving a sequence of smooth NLP subproblems. While
+numerically robust and widely applicable, the standard formulation
+reduces $t_k$ via a fixed geometric rule that is independent of solver
+progress, and is theoretically guaranteed to converge only to
+C-stationary points~\cite{Scholtes2001,HoheiselKanzowSchwartz2013},
+providing no built-in mechanism for targeting B-stationary. A detailed review of Scholtes regularization is given
+in Section~\ref{sec:scholtes}; see also Hoheisel
+et~al.~\cite{HoheiselKanzowSchwartz2013} for a comprehensive
+theoretical and numerical comparison among different relaxation methods.
+
+Existing methods face practical limitations: SQP approaches~\cite{FletcherLeyffer2004}
+often depend on commercial solvers like SNOPT~\cite{GillMurraySaunders2005SNOPT},
+while penalty~\cite{HuRalph2004,Anitescu2005} and interior-point
+methods~\cite{RaghunnathanBiegler2005,LeyfferLopezCalvaNocedal2006}
+frequently encounter numerical instability near the feasible boundary. The recent MPECopt algorithm of Nurkanovi\'{c} and
+Leyffer~\cite{NurkanovicLeyffer2025} is an open-source method with global convergence to B-stationary
+points and strong performance on the MacMPEC (191 problems)
+benchmark~\cite{Leyffer2000}; however, its implementation depends on
+the commercial MATLAB environment and its strongest results rely on the
+commercial solver Gurobi, and it has not yet been validated on the
+MPECLib (92 problems)~\cite{MPECLib} or NOSBENCH (603 problems)~\cite{NurkanovicPozharskiyDiehl2024}
+collections.
+
+Significant gaps remain in the practical MPEC software landscape. Many
+algorithms rely on commercial software (HSL, SNOPT, Gurobi), standard
+Scholtes regularization lacks built-in mechanisms for diagnosing
+stronger stationarity than C-stationarity, and reproducible
+open-source benchmarking infrastructure is still comparatively scarce.
+MPECSS is designed to close these implementation and reproducibility
+gaps within a single open-source code base.
+
+MPECSS uses the Scholtes framework while adding an implementation-aware
+\emph{adaptive regularization update} driven by the homotopy
+complementarity residual and an integrated \emph{multiplier sign test}
+derived from the mathematical characterizations of Scheel and
+Scholtes~\cite{ScheelScholtes2000}. In the implementation, this sign
+test is used as an S-stationarity diagnostic on the $G$- and
+$H$-multipliers at numerically biactive indices; final B-stationarity
+certification is then performed in Phase~III by a combination of
+MPEC-LICQ checks and, when needed, LPEC-based verification. The method
+is implemented entirely in Python using the open-source CasADi
+framework~\cite{AnderssonGillisHornRawlingsDiehl2019} and
+IPOPT~\cite{WachterBiegler2006}, with no commercial dependencies.
+
+The main contributions of this paper are summarized as follows:
+\emph{MPECSS algorithm:} A fully open-source, multi-phase
+  algorithm for solving MPECs that combines Scholtes regularization with
+  adaptive parameter control, a multiplier-based stationarity
+  diagnostic, multistart and restoration mechanisms, and a Phase~III
+  certification pipeline combining LICQ checks, BNLP polishing, and
+  LPEC refinement.
+\emph{Adaptive regularization control:} A monitoring-driven update of
+  $t_k$ based on the implemented homotopy residual, stable biactive-set
+  tracking, and stagnation counters, together with practical safeguards
+  such as adaptive jumps, jump caps, and a floor on $t_k$.
+\emph{Multiplier sign test:} A fast algebraic procedure that checks the
+  converted $G$- and $H$-multipliers on numerically biactive indices to
+  detect S-stationarity candidates and steer the subsequent
+  certification logic.
+\emph{Open-source benchmark infrastructure:} A reproducible benchmark
+  runner for MacMPEC, MPECLib, and NOSBENCH with 249-column CSV logging,
+  environment capture, process-level isolation for per-problem
+  timeout enforcement, resume support (via \texttt{--resume}),
+  retry-failed logic, and graceful recovery from timeout, interrupt,
+  and out-of-memory events. The solver stack auto-selects between
+  SQP$+$qpOASES (for problems with $n \leq 400$ when available) and
+  IPOPT$+$MUMPS (otherwise).
+\emph{Rigorous convergence guarantees:} We provide formal proofs that
+  MPECSS inherits the baseline C-stationarity guarantees of Scholtes
+  regularization, while stronger B-stationarity certificates are
+  produced in Phase~III when LICQ equivalence or LPEC verification
+  succeeds.
+
+
+
+

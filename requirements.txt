@@ -1,0 +1,14 @@
+# Core solver stack
+casadi>=3.6.3
+numpy>=1.24
+pandas>=2.0
+scipy>=1.11
+
+# Visualisation (optional, for trace_viz)
+matplotlib>=3.7
+
+# System introspection — used by benchmark runner for memory hints
+psutil>=5.9
+
+# Testing
+pytest>=7.4

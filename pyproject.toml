@@ -1,0 +1,55 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mpecss"
+version = "1.0.3"
+authors = [
+  { name="Saurabh", email="27098@arsd.du.ac.in" },
+  { name="Kunwar Vijay Kumar Singh", email="24091973@scale.iitrpr.ac.in" },
+]
+description = "Scholtes Regularization with Adaptive Paths for MPECs"
+readme = "README.md"
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Topic :: Scientific/Engineering",
+    "Development Status :: 4 - Beta",
+]
+
+dependencies = [
+    "casadi>=3.6.3",
+    "numpy>=1.24",
+    "pandas>=2.0",
+    "scipy>=1.11",
+    "matplotlib>=3.7",
+    "psutil>=5.9",
+]
+
+[project.urls]
+Homepage = "https://github.com/mrsaurabhtanwar/MPECSS"
+Repository = "https://github.com/mrsaurabhtanwar/MPECSS"
+"Bug Tracker" = "https://github.com/mrsaurabhtanwar/MPECSS/issues"
+Changelog = "https://github.com/mrsaurabhtanwar/MPECSS/blob/main/CHANGELOG.md"
+
+[project.optional-dependencies]
+test = ["pytest>=7.4"]
+
+[project.scripts]
+mpecss-preflight = "scripts.preflight_checks:main"
+mpecss-all-benchmarks = "scripts.run_all_benchmarks:main"
+mpecss-macmpec = "scripts.run_macmpec_benchmark:main"
+mpecss-mpeclib = "scripts.run_mpeclib_benchmark:main"
+mpecss-nosbench = "scripts.run_nosbench_benchmark:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["mpecss*", "scripts*"]

@@ -1,0 +1,45 @@
+%% MPEC-SS Algorithm Workflow - Diagram A: Top-Level Overview
+%% Version 1.0.4 | Node count: 18
+%% Render at: https://mermaid.live
+
+flowchart LR
+    START([START]) --> P1[[Phase I<br/>Feasibility]]
+
+    P1 --> EC{Early<br/>Check}
+
+    EC -->|S-stat candidate| SKIP1>Skip Phase II]
+    EC -->|C-stat + small biactive| SKIP2>Skip Phase II]
+    EC -->|need refinement| P2
+
+    SKIP1 --> P3
+    SKIP2 --> P3
+
+    P2[[Phase II<br/>Homotopy Loop]] --> POST{Post-Loop<br/>Check}
+
+    POST -->|best good| P3
+    POST -->|failed| FAIL1>FAIL]
+
+    P3[[Phase III<br/>B-stat Cert]] --> BNLP[[BNLP<br/>Polish]]
+
+    BNLP --> RESULT{Result}
+
+    RESULT -->|B-certified| B_OUT([B-STAT])
+    RESULT -->|S only| S_OUT([S-STAT])
+    RESULT -->|C only| C_OUT([C-STAT])
+
+    FAIL1 --> DONE([END])
+    B_OUT --> DONE
+    S_OUT --> DONE
+    C_OUT --> DONE
+
+    classDef phase    fill:#dbeafe,stroke:#1d4ed8,stroke-width:2px,color:#1e3a8a
+    classDef success  fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#14532d
+    classDef failure  fill:#fee2e2,stroke:#dc2626,stroke-width:2px,color:#7f1d1d
+    classDef decision fill:#fef9c3,stroke:#ca8a04,stroke-width:1px,color:#713f12
+    classDef bypass   fill:#ecfdf5,stroke:#059669,stroke-width:2px,color:#065f46
+
+    class P1,P2,P3,BNLP phase
+    class B_OUT,S_OUT success
+    class FAIL1 failure
+    class EC,POST,RESULT decision
+    class SKIP1,SKIP2 bypass

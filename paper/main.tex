@@ -1,0 +1,210 @@
+% main.tex
+% Journal: Optimization Methods and Software (Taylor & Francis)
+% Class:   interact.cls v1.05 (August 2017)
+% Citation style: NUMERIC [N] via natbib  -- see PUBLICATION_GUIDELINES.md
+% Last revised: March 2026
+
+\documentclass[]{interact}  
+
+% -------------------------------------------------------------------------
+% SAFE PACKAGES (T&F production pipeline approved)
+% -------------------------------------------------------------------------
+\usepackage{epstopdf}                  % EPS figures with PDFLaTeX
+\usepackage[caption=false]{subfig}     % sub-figures
+
+% -------------------------------------------------------------------------
+% TABLES AND FORMATTING
+% -------------------------------------------------------------------------
+\usepackage{booktabs}                  % \toprule, \midrule, \bottomrule
+\usepackage{multirow}                  % \multirow{} for merged table rows
+\usepackage{rotating}                  % sidewaystable for wide tables
+\usepackage{xcolor}                    % for \textcolor{} in text annotations
+
+% -------------------------------------------------------------------------
+% DOUBLE-SPACING FOR PEER REVIEW (remove/comment out for camera-ready)
+% -------------------------------------------------------------------------
+\usepackage[doublespacing]{setspace}
+%\setlength\parindent{24pt}% To increase paragraph indentation when line spacing is doubled
+%\setlength\bibindent{2em}% To increase hanging indent in bibliography when line spacing is doubled
+
+% Uncomment both lines below to add line numbers for reviewers:
+% \usepackage{lineno}
+
+% -------------------------------------------------------------------------
+% CITATION STYLE: NUMERIC [N]  (OMS journal requirement)
+% -------------------------------------------------------------------------
+\usepackage[numbers,sort&compress]{natbib}
+\bibpunct[, ]{[}{]}{,}{n}{,}{,}% Citation support using natbib.sty
+\renewcommand\bibfont{\fontsize{10}{12}\selectfont}
+
+% -------------------------------------------------------------------------
+% ALGORITHMS
+% -------------------------------------------------------------------------
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+% -------------------------------------------------------------------------
+% URLS IN REFERENCES
+% -------------------------------------------------------------------------
+\usepackage{url}
+
+% -------------------------------------------------------------------------
+% THEOREM-LIKE ENVIRONMENTS
+% Theorem/Lemma/etc. share one counter scoped to sections (Theorem 2.1, Lemma 2.2, etc.)
+% Remarks are numbered within sections (Remark 3.1, Remark 3.2, etc.)
+% -------------------------------------------------------------------------
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{proposition}[theorem]{Proposition}
+
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{example}[theorem]{Example}
+\newtheorem{assumption}[theorem]{Assumption}
+
+\theoremstyle{remark}
+\newtheorem{remark}{Remark}[section]
+\newtheorem{notation}{Notation}
+
+
+% Starting the Paper
+
+\begin{document}
+
+\title{MPECSS: Scholtes Regularization with Adaptive Paths for Targeting B-stationary Points in MPECs}
+
+\author{
+\name{Saurabh (ORCID: 0009-0003-0458-8227)\textsuperscript{a}\thanks{CONTACT Saurabh.
+      Email: 27098@arsd.du.ac.in}
+\and
+Kunwar Vijay Kumar Singh\textsuperscript{b}\thanks{CONTACT K.~V.~K.~Singh.
+      Email: kunwar@du.ac.in}}
+\affil{\textsuperscript{a}Department of Mathematics,
+       Atma Ram Sanatan Dharma College, University of Delhi,
+       New Delhi 110021, India} 
+\affil{\textsuperscript{b}Department of Mathematics,
+       University of Delhi, New Delhi 110007, India}
+}
+
+\maketitle
+
+
+% ABSTRACT
+
+\begin{abstract}
+We propose MPECSS (MPEC Stationarity Search), an open-source algorithm for solving Mathematical Programs with Equilibrium Constraints (MPECs), which arise in bilevel optimization, optimal control, and equilibrium modeling. Standard Scholtes regularization converges only to C-stationary points in general, a comparatively weak optimality concept providing no systematic mechanism for certifying the stronger B-stationary solutions required for genuine local optimality. MPECSS addresses this limitation through two core mechanisms: an adaptive regularization-parameter update driven by complementarity residuals, and a multiplier sign test that dynamically steers the solver toward B-stationary points. Implemented in Python via CasADi and IPOPT, with no commercial dependencies, the implementation is fully open-source and reproducible. Convergence analysis establishes C-stationarity under standard assumptions; furthermore, MPECSS systematically certifies B-stationarity either directly when the multiplier sign test confirms S-stationarity under MPEC-LICQ or alternatively through LPEC (Linear Program with Equilibrium Constraints) verification. Benchmarking on MacMPEC, MPECLib, and NOSBENCH achieves convergence rates of 96.3\%, 92.4\%, and 93\%, respectively, positioning MPECSS as an open-source method evaluated across all three major MPEC benchmark collections.
+\end{abstract}
+
+\begin{keywords}
+Complementarity constraints; Scholtes regularization; MPEC; Adaptive regularization; Open-source optimization
+\end{keywords}
+
+\begin{amscode}
+90C33; 90C30; 65K05; 49M37; 90C90
+\end{amscode}
+
+
+
+
+
+% =========================================================================
+% Section 1 -- Introduction
+% =========================================================================
+\input{section_introduction}
+
+% =========================================================================
+% Section 2 -- Preliminaries
+% =========================================================================
+\input{section_preliminaries}
+
+% =========================================================================
+% Section 3 -- The Proposed Algorithm: MPECSS
+% =========================================================================
+\input{section_algorithm}
+
+% =========================================================================
+% Section 4 -- Convergence Analysis
+% =========================================================================
+\input{section_convergence}
+
+% =========================================================================
+% Section 5 -- Numerical Experiments
+% =========================================================================
+\input{section_numerical}
+
+% =========================================================================
+% Section 6 -- Conclusions
+% =========================================================================
+\input{section_conclusions}
+
+% =========================================================================
+% Back-matter
+% =========================================================================
+
+\section*{Acknowledgement(s)}
+
+The authors thank the anonymous reviewers for their constructive feedback, which significantly improved the clarity and rigor of the presentation. The authors also thank the developers of CasADi and IPOPT for providing powerful open-source tools that enabled this research and the broader optimization community. The authors thank Anton Pozharskiy for translating the MacMPEC test collection to the CasADi format used in the numerical experiments. First author Saurabh want to specifically ackwolege the mentorship and support of their supervisor Dr. Kunwar Vijay Kumar Signh for providing guidance and significant intellectual contributions to the development of the MPECSS algorithm and the design of the numerical experiments.
+
+
+\section*{Disclosure statement}
+
+No potential conflict of interest was reported by the author(s).
+
+
+\section*{Generative AI and AI-assisted technologies in the writing process}
+
+During the preparation of this work the authors used the following
+AI-assisted tools: Claude Opus 4 (Anthropic) for brainstorming, deep
+technical writing assistance, and exploration of algorithmic ideas;
+Claude Sonnet 4 (Anthropic) for drafting and editing manuscript
+sections; Claude Haiku 4.5 (Anthropic) for literature review and
+language improvement; Gemini 3.1 Pro (Preview) (Google) for additional
+literature review and language checking; and GitHub Copilot (Microsoft,
+powered by OpenAI) for code development assistance. After using these
+tools, the authors reviewed and edited all generated content and take
+full responsibility for all aspects of this publication, including the
+accuracy of mathematical derivations, the authenticity of reported
+results, and compliance with publication ethics. These AI tools did not
+make significant intellectual contributions to the research, nor did
+they determine any aspect of the experimental outcomes.
+
+
+\section*{Funding}
+
+% TODO: Add funding details, or state: The authors report no funding.
+
+
+\section*{Data availability statement}
+
+The benchmark problem instances used in this study (MacMPEC, MPECLib,
+and NOSBENCH) are publicly available as referenced in the text. The raw
+numerical results, benchmark JSON files, run-environment metadata, and
+all scripts required to reproduce the reported figures and tables are
+available at
+\url{https://github.com/mrsaurabhtanwar/MPECSS}.
+
+
+\section*{Software availability}
+
+The MPECSS algorithm is freely available under the Apache~2.0 licence.
+The source code, benchmark datasets, and scripts required to reproduce
+all reported results are available on GitHub at
+\url{https://github.com/mrsaurabhtanwar/MPECSS}.
+The verified MPECLib artifact discussed in this manuscript was produced
+with solver version~1.0.3 at git commit \texttt{21e512f} under
+Python~3.12.3 with CasADi~3.7.2, NumPy~2.4.4, pandas~3.0.2,
+SciPy~1.17.1, psutil~7.2.2, and matplotlib~3.10.8.
+
+
+% =========================================================================
+% References
+% =========================================================================
+
+\input{section_references}
+
+
+\end{document}
+
+

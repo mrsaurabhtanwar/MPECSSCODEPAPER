@@ -1,0 +1,215 @@
+\section{Preliminaries}
+\label{sec:prelim}
+% =========================================================================
+
+In this section we establish the notation and definitions used throughout the paper, recall the stationarity concepts and relevant constraint qualifications for MPECs.
+
+
+% -------------------------------------------------------------------------
+\subsection{Index sets and the MPEC Lagrangian}
+\label{sec:notation}
+% -------------------------------------------------------------------------
+
+Throughout this section, and for the remainder of the paper, we assume
+that $f$, $g_i$ ($i=1,\ldots,m$), $h_j$ ($j=1,\ldots,p$), $G_\ell$,
+and $H_\ell$ ($\ell=1,\ldots,q$) are twice continuously differentiable.
+
+Consider the MPEC~\eqref{eq:general_mpec}. We denote its
+feasible set by
+\begin{equation}
+  \mathcal{F} = \bigl\{x \in \mathbb{R}^n : g_i(x) \leq 0,\;
+    h_j(x) = 0,\; G_\ell(x) \geq 0,\; H_\ell(x) \geq 0,\;
+    G_\ell(x)\,H_\ell(x) = 0,\;
+    \forall\, i,j,\ell\bigr\}.
+  \label{eq:feasible_set}
+\end{equation}
+Let $x^* \in \mathcal{F}$ be a feasible point. Following standard MPEC
+literature~\citep{LuoPangRalph1996,ScheelScholtes2000}, we partition the active
+complementarity components into the following index sets at $x^*$:
+\begin{align}
+  \mathcal{I}_g(x^*) &= \{i \in \{1,\ldots,m\} : g_i(x^*) = 0\},
+    \label{eq:Ig} \\
+  \mathcal{I}_{0+}(x^*) &= \{\ell \in \{1,\ldots,q\} : G_\ell(x^*) = 0,\;
+    H_\ell(x^*) > 0\},  \label{eq:I0p} \\
+  \mathcal{I}_{+0}(x^*) &= \{\ell \in \{1,\ldots,q\} : G_\ell(x^*) > 0,\;
+    H_\ell(x^*) = 0\},  \label{eq:Ip0} \\
+  \mathcal{I}_{00}(x^*) &= \{\ell \in \{1,\ldots,q\} : G_\ell(x^*) = 0,\;
+    H_\ell(x^*) = 0\}.  \label{eq:I00}
+\end{align}
+The set $\mathcal{I}_{0+}$ contains the indices where only $G$ is
+active; the set $\mathcal{I}_{+0}$ contains the indices where only $H$
+is active; and the \emph{biactive} (or \emph{degenerate}) set
+$\mathcal{I}_{00}$ contains the indices where both complementarity
+functions equal zero simultaneously.
+We also write $\mathcal{I}_G = \mathcal{I}_{0+} \cup \mathcal{I}_{00}$
+and $\mathcal{I}_H = \mathcal{I}_{+0} \cup \mathcal{I}_{00}$, and suppress
+the argument $x^*$ universally when clear from context.
+
+The \emph{MPEC Lagrangian} associated with~\eqref{eq:general_mpec}, which forms
+the basis for defining MPEC stationarity conditions~\citep{ScheelScholtes2000,FletcherLeyfferRalphScholtes2006}, is defined as
+\begin{equation}
+  \mathcal{L}(x, \lambda, \mu, \gamma^G, \gamma^H)
+    = f(x) + \sum_{i=1}^{m} \lambda_i \, g_i(x)
+      + \sum_{j=1}^{p} \mu_j \, h_j(x)
+      - \sum_{\ell=1}^{q} \gamma^G_\ell \, G_\ell(x)
+      - \sum_{\ell=1}^{q} \gamma^H_\ell \, H_\ell(x),
+  \label{eq:mpec_lagrangian}
+\end{equation}
+where $\lambda \in \mathbb{R}^m$, $\mu \in \mathbb{R}^p$, and
+$\gamma^G, \gamma^H \in \mathbb{R}^q$ are the associated multiplier
+vectors.
+
+
+% -------------------------------------------------------------------------
+\subsection{Stationarity concepts}
+\label{sec:stationarity}
+% -------------------------------------------------------------------------
+
+\begin{proposition}[Failure of standard CQs {\cite[see e.g.][]{ScheelScholtes2000}}]
+\label{prop:cq_failure}
+At any feasible point $x^* \in \mathcal{F}$ with $\mathcal{I}_{00}(x^*)
+\neq \emptyset$, both LICQ and MFCQ fail to hold for
+problem~\eqref{eq:general_mpec}. Consequently, the classical KKT condition
+does not provide a valid stationarity certificate at such points.
+\end{proposition}
+
+% Since standard constraint qualifications fail at every feasible point of an MPEC, as formalized below, the classical KKT conditions are not directly applicable, and MPEC-specific stationarity notions are
+% required.
+
+% The key difference among the MPEC-specific stationarity concepts
+% developed to address this gap is how they restrict the signs of the
+% complementarity multipliers $\gamma^G_\ell$ and $\gamma^H_\ell$ for
+% biactive indices $\ell \in \mathcal{I}_{00}(x^*)$. We review these
+% definitions below.
+
+At a feasible point $x^*$ of~\eqref{eq:general_mpec}, the
+complementarity constraints $G_\ell(x) \geq 0$, $H_\ell(x) \geq 0$,
+$G_\ell(x)^{\top} H_\ell(x) = 0$ together imply that standard LICQ and
+MFCQ necessarily fail
+(Proposition~\ref{prop:cq_failure}). MPEC-specific constraint
+qualifications are therefore introduced by considering the
+\emph{tightened nonlinear program} (TNLP)~\citep{ScheelScholtes2000},
+which replaces the complementarity constraints with the active-set
+equalities:
+\begin{equation}
+\begin{aligned}
+  \text{TNLP}(x^*): \quad & \min_{x \in \mathbb{R}^n} \quad && f(x) \\
+  & \text{s.t.} \quad && g_i(x) \leq 0, \quad i = 1, \ldots, m, \\
+  & && h_j(x) = 0, \quad j = 1, \ldots, p, \\
+  & && G_\ell(x) = 0, \quad \ell \in \mathcal{I}_G, \\
+  & && H_\ell(x) = 0, \quad \ell \in \mathcal{I}_H.
+\end{aligned}
+\label{eq:tnlp}
+\end{equation}
+First we define stationary points, each of the following definitions, we assume that $x^*$ is a
+feasible point of~\eqref{eq:general_mpec} and that there exist
+multipliers $(\lambda, \mu, \gamma^G, \gamma^H)$ satisfying the
+\emph{basic stationarity system}:
+\begin{equation}
+  \nabla_x \mathcal{L}(x^*, \lambda, \mu, \gamma^G, \gamma^H) = 0,
+  \label{eq:stationarity_system}
+\end{equation}
+together with the standard sign and complementarity conditions
+\[
+  \lambda_i \geq 0 \;\; (i \in \mathcal{I}_g), \quad
+  \gamma^G_\ell = 0 \;\; (\ell \notin \mathcal{I}_G), \quad
+  \gamma^H_\ell = 0 \;\; (\ell \notin \mathcal{I}_H).
+\]
+The vanishing of $\gamma^G_\ell$ for $\ell \notin \mathcal{I}_G$ and of
+$\gamma^H_\ell$ for $\ell \notin \mathcal{I}_H$ follows from
+complementary slackness.
+
+\begin{definition}[MPEC stationarity concepts \cite{ScheelScholtes2000,Ye2005,FlegelKanzow2005}]\label{def:mpec_stationarity}
+A feasible point $x^*$ is called:
+\begin{itemize}
+    \setlength{\itemsep}{1pt}
+    \item[--] \emph{W-stationarity}: if there exist multipliers satisfying \eqref{eq:stationarity_system} with no further sign restrictions on $\gamma^G_\ell, \gamma^H_\ell$ for $\ell \in \mathcal{I}_{00}(x^*)$.
+    \item[--] \emph{C-stationarity}: if it is W-stationary and $\gamma^G_\ell \cdot \gamma^H_\ell \geq 0$ for all $\ell \in \mathcal{I}_{00}(x^*)$.
+    \item[--] \emph{M-stationarity}: if it is W-stationary and for each $\ell \in \mathcal{I}_{00}(x^*)$, either ($\gamma^G_\ell > 0, \gamma^H_\ell > 0$) or $\gamma^G_\ell \cdot \gamma^H_\ell = 0$ \cite{Ye2005,FlegelKanzow2005}.
+    \item[--] \emph{S-stationarity}: if it is W-stationary and $\gamma^G_\ell \geq 0, \gamma^H_\ell \geq 0$ for all $\ell \in \mathcal{I}_{00}(x^*)$.
+    \item[--] \emph{B-stationarity} \cite{LuoPangRalph1996,ScheelScholtes2000}: if $\nabla f(x^*)^\top d \geq 0$ for all $d \in T_{\mathcal{F}}(x^*)$, where the \emph{Bouligand tangent cone} is $T_{\mathcal{F}}(x^*) = \{d \in \mathbb{R}^n : \exists x^k \in \mathcal{F}, x^k \to x^*, t_k \downarrow 0 \text{ s.t. } \frac{x^k - x^*}{t_k} \to d\}$.
+\end{itemize}
+\end{definition}
+
+The strict hierarchy among multiplier-based notions is established in~\citep{ScheelScholtes2000,Ye2005,FlegelKanzow2005}:
+\begin{equation}
+  \text{S-stat.} \Rightarrow \text{M-stat.} \Rightarrow \text{C-stat.} \Rightarrow \text{W-stat.}
+  \label{eq:stat_hierarchy}
+\end{equation}
+Moreover, Scheel and Scholtes~\citep{ScheelScholtes2000} show that S-stationarity implies B-stationarity (a geometric concept based on the tangent cone) without requiring constraint qualifications. Under MPEC-LICQ, the converse holds and the two are equivalent (B-stationary $\Leftrightarrow$ S-stationary).
+
+\begin{remark}
+\label{rem:sign_test}
+By Definition~\ref{def:mpec_stationarity}, S-stationarity at $x^*$ reduces to
+verifying the gradient condition~\eqref{eq:stationarity_system} together
+with the sign conditions $\gamma^G_\ell \geq 0$ and
+$\gamma^H_\ell \geq 0$ for all $\ell \in \mathcal{I}_{00}(x^*)$. In
+practice, these conditions can be checked after any NLP solve by a fast
+algebraic test on the extracted multipliers---a procedure we call the
+\emph{multiplier sign test}. In the implementation, a sign-test pass is
+treated as an \emph{S-stationarity diagnostic}: it identifies a strong
+candidate point and steers the adaptive path, but final B-stationarity
+is reported only after the Phase~III certification logic checks
+MPEC-LICQ or, if necessary, solves the LPEC verification problem. A
+complete description of how this test is integrated into the MPECSS
+algorithm is given in Section~\ref{sec:algorithm}.
+\end{remark}
+
+
+% -------------------------------------------------------------------------
+\subsection{Constraint qualifications for MPECs}
+\label{sec:cq}
+% -------------------------------------------------------------------------
+
+
+\begin{definition}[MPEC-LICQ]\label{def:mpec_licq}
+The \emph{MPEC Linear Independence Constraint
+Qualification}~\cite{ScheelScholtes2000} holds at a feasible point
+$x^*$ if LICQ holds for the TNLP~\eqref{eq:tnlp}, i.e., the gradients
+\[
+  \bigl\{\nabla g_i(x^*)\bigr\}_{i \in \mathcal{I}_g}, \;\;
+  \bigl\{\nabla h_j(x^*)\bigr\}_{j=1}^{p}, \;\;
+  \bigl\{\nabla G_\ell(x^*)\bigr\}_{\ell \in \mathcal{I}_G}, \;\;
+  \bigl\{\nabla H_\ell(x^*)\bigr\}_{\ell \in \mathcal{I}_H}
+\]
+are linearly independent.
+\end{definition}
+
+\begin{definition}[MPEC-MFCQ]\label{def:mpec_mfcq}
+The \emph{MPEC Mangasarian--Fromovitz Constraint
+Qualification}~\cite{ScheelScholtes2000} holds at $x^*$ if MFCQ holds
+for the TNLP~\eqref{eq:tnlp}. That is, the equality constraint
+gradients
+\[
+  \bigl\{\nabla h_j(x^*)\bigr\}_{j=1}^{p}, \;\;
+  \bigl\{\nabla G_\ell(x^*)\bigr\}_{\ell \in \mathcal{I}_G}, \;\;
+  \bigl\{\nabla H_\ell(x^*)\bigr\}_{\ell \in \mathcal{I}_H}
+\]
+are linearly independent, and there exists a direction $d \in
+\mathbb{R}^n$ satisfying
+\begin{align}
+  \nabla g_i(x^*)^\top d &< 0, \quad \forall\, i \in
+    \mathcal{I}_g(x^*), \label{eq:mfcq_ineq} \\
+  \nabla h_j(x^*)^\top d &= 0, \quad \forall\, j =
+    1,\ldots,p, \label{eq:mfcq_eq} \\
+  \nabla G_\ell(x^*)^\top d &= 0, \quad \forall\, \ell \in
+    \mathcal{I}_G(x^*), \label{eq:mfcq_G} \\
+  \nabla H_\ell(x^*)^\top d &= 0, \quad \forall\, \ell \in
+    \mathcal{I}_H(x^*). \label{eq:mfcq_H}
+\end{align}
+\end{definition}
+
+It follows directly from the definitions that MPEC-LICQ is strictly
+stronger than MPEC-MFCQ: MPEC-LICQ implies MPEC-MFCQ, but not vice
+versa. Under MPEC-LICQ, the multipliers
+$(\lambda, \mu, \gamma^G, \gamma^H)$ satisfying~\eqref{eq:stationarity_system}
+are unique, while under MPEC-MFCQ they need not be.
+
+With the notation, stationarity hierarchy, and constraint qualifications
+established above, Section~\ref{sec:algorithm} presents the MPECSS
+algorithm, which leverages these concepts to construct an adaptive
+regularization path targeting B-stationary points
+of MPEC~\eqref{eq:general_mpec}.
+
+
+% =========================================================================

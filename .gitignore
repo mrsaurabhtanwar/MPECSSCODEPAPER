@@ -1,0 +1,130 @@
+# --- Environments ---
+venv/
+.venv/
+venv_linux/
+env/
+ENV/
+bin/
+lib/
+share/
+Include/
+pyvenv.cfg
+.workspace-instructions.md
+.github/copilot-instructions.md
+.claude/
+
+# --- Python Caches & Artifacts ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+*.pyi
+
+# --- Editor and IDE Settings ---
+.vscode/
+.idea/
+*.swp
+*.swo
+*.code-workspace
+
+# --- Testing and Logs ---
+.pytest_cache/
+.coverage
+*.db
+*.log
+.cache/
+$outfile
+
+# --- Data and Results ---
+# Ignore all CSV and JSON results by default
+results/
+iteration_logs/
+*.csv
+*.json
+*.nl.json
+*.zip
+!benchmarks.zip
+
+# Benchmark data folders (usually contain hundreds of large JSONs)
+# benchmarks/macmpec/*
+!benchmarks/macmpec/README.md
+!benchmarks/macmpec/macmpec-json/
+!benchmarks/macmpec/macmpec-json/*.json
+
+benchmarks/mpeclib/*
+!benchmarks/mpeclib/README.md
+!benchmarks/mpeclib/mpeclib-json/
+!benchmarks/mpeclib/mpeclib-json/*.json
+
+benchmarks/nosbench/*
+!benchmarks/nosbench/README.md
+
+# --- Verification ---
+# Ignore all results in verification but keep the README
+verification/*
+!verification/README.md
+
+# --- Project-Specific Recovery Artifacts (from previous cleanup) ---
+recovered_clean/
+recovered_pycdc/
+decompile_all.py
+recover_py.py
+recover_py_files.py
+read_pyc.py
+deploy_recovered.py
+install_and_test_decompiler.py
+fix_encoding.py
+setup_decompiler.py
+test_decompiler.py
+
+# --- Generated Files ---
+mpecss_flowchart.png
+final_benchmark_report.txt
+aicodeverification.md
+check_python.bat
+
+# --- Temp Files ---
+tmp_*.txt
+
+# --- LaTeX Build Artifacts ---
+*.aux
+*.fdb_latexmk
+*.fls
+*.synctex.gz
+*.synctex
+*.bbl
+*.blg
+*.out
+*.toc
+*.lof
+*.lot
+*-eps-converted-to.pdf
+
+# --- OS Specific ---
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# --- Jupyter Notebook ---
+.ipynb_checkpoints
+.pytest_cache/
+
+.*zip

@@ -1,0 +1,65 @@
+%% MPEC-SS Algorithm Workflow - Diagram C: Phase III / BNLP / Result
+%% Version 1.0.4 | Node count: 24
+%% Render at: https://mermaid.live
+
+flowchart LR
+    P3_IN([Phase III Entry]) --> LICQ
+
+    subgraph LICQ_CHECK["MPEC-LICQ Check"]
+        LICQ[Collect active grads<br/>G,H at I_G,I_H,I_B]
+        LICQ --> RANK{rank == n_active?}
+    end
+
+    RANK -->|Yes LICQ| LICQ_SIGN{sign_pass?}
+    LICQ_SIGN -->|Yes| B_FAST[B-stat certified<br/>no LPEC needed]
+    LICQ_SIGN -->|No| LPEC_RUN
+
+    RANK -->|No LICQ| LPEC_RUN
+
+    subgraph LPEC["LPEC Enumeration"]
+        LPEC_RUN{biactive = 0?}
+        LPEC_RUN -->|Yes| B_TRIV[B-stat trivial<br/>no LP needed]
+        LPEC_RUN -->|No| ENUM[Enumerate branches<br/>max 2^15, 60s]
+        ENUM --> LP[Solve LP per branch<br/>min grad_f dot d]
+        LP --> OBJ{best_obj >= -1e-8?}
+    end
+
+    OBJ -->|Yes| B_CERT[B-STATIONARY]
+    OBJ -->|No| SIGN_CHK{sign_pass?}
+    SIGN_CHK -->|Yes| S_ONLY[S-STATIONARY<br/>LICQ fails]
+    SIGN_CHK -->|No| C_ONLY[C-STATIONARY<br/>descent exists]
+
+    B_FAST --> BNLP_START
+    B_TRIV --> BNLP_START
+    B_CERT --> BNLP_START
+
+    subgraph BNLP["BNLP Polish"]
+        BNLP_START[Identify I1,I2,I3<br/>active partition]
+        BNLP_START --> BNLP_SOLVE[Solve BNLP<br/>no comp products]
+        BNLP_SOLVE --> ACCEPT{comp good AND<br/>obj not worse?}
+        ACCEPT -->|Yes| ULTRA[Ultra-tight polish<br/>tol=1e-14]
+        ACCEPT -->|No| FLIP[Try partition flip<br/>up to 32 flips]
+        FLIP --> ULTRA
+    end
+
+    ULTRA --> RESULT
+
+    S_ONLY --> RESULT
+    C_ONLY --> RESULT
+
+    subgraph OUTPUT["Result"]
+        RESULT[Build result dict<br/>status, stationarity<br/>z_final, f_final]
+    end
+
+    RESULT --> DONE([END])
+
+    classDef phase    fill:#dbeafe,stroke:#1d4ed8,stroke-width:2px,color:#1e3a8a
+    classDef success  fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#14532d
+    classDef failure  fill:#fee2e2,stroke:#dc2626,stroke-width:2px,color:#7f1d1d
+    classDef decision fill:#fef9c3,stroke:#ca8a04,stroke-width:1px,color:#713f12
+    classDef process  fill:#f3e8ff,stroke:#9333ea,stroke-width:1px,color:#581c87
+
+    class LICQ_CHECK,LPEC,BNLP,OUTPUT phase
+    class B_FAST,B_TRIV,B_CERT success
+    class S_ONLY,C_ONLY process
+    class RANK,LICQ_SIGN,LPEC_RUN,OBJ,SIGN_CHK,ACCEPT decision

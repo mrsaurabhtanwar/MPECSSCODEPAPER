@@ -202,24 +202,40 @@ def main() -> int:
     # via sys.argv before calling it.
     benchmark_path = args.path or config["default_path"]
 
-    # Smart path resolution: if the provided path doesn't exist but looks like
-    # a Kaggle path, try to use the local equivalent
+    # Smart path resolution: if the provided path doesn't exist, try alternatives
     if benchmark_path and not os.path.isdir(benchmark_path):
-        if "/kaggle/input/" in benchmark_path:
-            # Extract the relative benchmark path and try local equivalent
-            # e.g., /kaggle/input/mpecss-benchmarks/benchmarks/nosbench/nosbench-json
-            #    -> ./benchmarks/nosbench/nosbench-json
+        found_path = None
+
+        # Try 1: Search for the benchmark folder in /kaggle/input (handles varying mount paths)
+        if "/kaggle/" in benchmark_path or not os.path.exists("/kaggle"):
+            # Extract the benchmark-relative part (e.g., "nosbench/nosbench-json")
             parts = benchmark_path.split("/benchmarks/", 1)
             if len(parts) == 2:
-                local_path = os.path.join(repo_dir, "benchmarks", parts[1])
-                if os.path.isdir(local_path):
-                    logger.info(f"Kaggle path not found, using local: {local_path}")
-                    benchmark_path = local_path
-                else:
-                    logger.warning(f"Path not found: {benchmark_path}")
-                    logger.warning(f"Local fallback also not found: {local_path}")
+                bench_relative = parts[1]  # e.g., "nosbench/nosbench-json"
+
+                # On Kaggle: search for the actual path (handles datasets/username/... structure)
+                if os.path.isdir("/kaggle/input"):
+                    import subprocess
+                    result = subprocess.run(
+                        ["find", "/kaggle/input", "-type", "d", "-path", f"*/benchmarks/{bench_relative}"],
+                        capture_output=True, text=True, timeout=30
+                    )
+                    if result.returncode == 0 and result.stdout.strip():
+                        found_path = result.stdout.strip().split('\n')[0]
+                        logger.info(f"Found Kaggle benchmark path: {found_path}")
+
+                # Local fallback: try repo_dir/benchmarks/...
+                if not found_path:
+                    local_path = os.path.join(repo_dir, "benchmarks", bench_relative)
+                    if os.path.isdir(local_path):
+                        found_path = local_path
+                        logger.info(f"Using local benchmark path: {found_path}")
+
+        if found_path:
+            benchmark_path = found_path
         else:
             logger.warning(f"Benchmark path not found: {benchmark_path}")
+            logger.warning(f"Tried searching in /kaggle/input and {repo_dir}/benchmarks/")
 
     injected_args = [
         "resumable_benchmark",  # argv[0]
@@ -248,16 +264,18 @@ def main() -> int:
         injected_args.append("--retry-failed")
     if args.problem_list:
         problem_list_path = args.problem_list
-        # Smart path resolution for problem list as well
-        if not os.path.isfile(problem_list_path) and "/kaggle/working/" in problem_list_path:
-            # e.g., /kaggle/working/MPECSSCODEPAPER/kaggle_setup/nosbench_splits/...
-            #    -> ./kaggle_setup/nosbench_splits/...
-            parts = problem_list_path.split("/kaggle/working/MPECSSCODEPAPER/", 1)
-            if len(parts) == 2:
-                local_path = os.path.join(repo_dir, parts[1])
-                if os.path.isfile(local_path):
-                    logger.info(f"Kaggle problem-list path not found, using local: {local_path}")
-                    problem_list_path = local_path
+        # Smart path resolution for problem list
+        if not os.path.isfile(problem_list_path):
+            # Try extracting relative path from various Kaggle working directory patterns
+            for pattern in ["/kaggle/working/MPECSSCODEPAPER/", "/kaggle/working/"]:
+                if pattern in problem_list_path:
+                    parts = problem_list_path.split(pattern, 1)
+                    if len(parts) == 2:
+                        local_path = os.path.join(repo_dir, parts[1])
+                        if os.path.isfile(local_path):
+                            logger.info(f"Using local problem-list path: {local_path}")
+                            problem_list_path = local_path
+                            break
         injected_args.extend(["--problem-list", problem_list_path])
 
     # Handle --resume-latest

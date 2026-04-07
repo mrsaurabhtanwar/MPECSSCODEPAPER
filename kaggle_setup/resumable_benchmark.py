@@ -202,6 +202,25 @@ def main() -> int:
     # via sys.argv before calling it.
     benchmark_path = args.path or config["default_path"]
 
+    # Smart path resolution: if the provided path doesn't exist but looks like
+    # a Kaggle path, try to use the local equivalent
+    if benchmark_path and not os.path.isdir(benchmark_path):
+        if "/kaggle/input/" in benchmark_path:
+            # Extract the relative benchmark path and try local equivalent
+            # e.g., /kaggle/input/mpecss-benchmarks/benchmarks/nosbench/nosbench-json
+            #    -> ./benchmarks/nosbench/nosbench-json
+            parts = benchmark_path.split("/benchmarks/", 1)
+            if len(parts) == 2:
+                local_path = os.path.join(repo_dir, "benchmarks", parts[1])
+                if os.path.isdir(local_path):
+                    logger.info(f"Kaggle path not found, using local: {local_path}")
+                    benchmark_path = local_path
+                else:
+                    logger.warning(f"Path not found: {benchmark_path}")
+                    logger.warning(f"Local fallback also not found: {local_path}")
+        else:
+            logger.warning(f"Benchmark path not found: {benchmark_path}")
+
     injected_args = [
         "resumable_benchmark",  # argv[0]
         "--tag", args.tag,
@@ -228,7 +247,18 @@ def main() -> int:
     if args.retry_failed:
         injected_args.append("--retry-failed")
     if args.problem_list:
-        injected_args.extend(["--problem-list", args.problem_list])
+        problem_list_path = args.problem_list
+        # Smart path resolution for problem list as well
+        if not os.path.isfile(problem_list_path) and "/kaggle/working/" in problem_list_path:
+            # e.g., /kaggle/working/MPECSSCODEPAPER/kaggle_setup/nosbench_splits/...
+            #    -> ./kaggle_setup/nosbench_splits/...
+            parts = problem_list_path.split("/kaggle/working/MPECSSCODEPAPER/", 1)
+            if len(parts) == 2:
+                local_path = os.path.join(repo_dir, parts[1])
+                if os.path.isfile(local_path):
+                    logger.info(f"Kaggle problem-list path not found, using local: {local_path}")
+                    problem_list_path = local_path
+        injected_args.extend(["--problem-list", problem_list_path])
 
     # Handle --resume-latest
     if args.resume_latest:

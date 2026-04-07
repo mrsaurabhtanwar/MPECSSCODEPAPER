@@ -53,3 +53,10 @@ mpecss-nosbench = "scripts.run_nosbench_benchmark:main"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["mpecss*", "scripts*"]
+
+[tool.pytest.ini_options]
+addopts = "-p no:cacheprovider"
+norecursedirs = [
+    ".pytest_cache",
+    "pytest-cache-files-*",
+]

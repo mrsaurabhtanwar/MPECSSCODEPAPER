@@ -87,14 +87,22 @@ def test_mpeclib_supported_nonstandard_case_builds_upper_bound_blocks() -> None:
     assert info["n_bounded_G"] < problem["n_comp"]
 
 
-def test_mpeclib_free_lower_h_is_flagged_unsupported() -> None:
+def test_mpeclib_boxed_h_case_is_supported() -> None:
     problem = load_mpeclib(str(MPECLIB_JSON / "mss.nl.json"))
+
+    assert problem["unsupported_model_reason"] is None
+    assert problem["ubH_finite"]
+    assert not any(problem["H_is_free"])
+
+
+def test_mpeclib_free_lower_h_is_flagged_unsupported() -> None:
+    problem = load_mpeclib(str(MPECLIB_JSON / "bard2.nl.json"))
 
     assert "free lower bounds on H" in problem["unsupported_model_reason"]
 
 
 def test_run_mpecss_returns_unsupported_model_for_unmodeled_bounds() -> None:
-    problem = load_mpeclib(str(MPECLIB_JSON / "mss.nl.json"))
+    problem = load_mpeclib(str(MPECLIB_JSON / "bard2.nl.json"))
 
     result = run_mpecss(problem, problem["x0_fn"](0))
 

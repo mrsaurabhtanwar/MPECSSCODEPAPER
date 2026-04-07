@@ -24,7 +24,7 @@ Choose the notebook for your benchmark:
 | Benchmark | Notebook to Upload |
 |-----------|-------------------|
 | MPECLib (92 problems) | `MPECSS_Kaggle_MPECLib.ipynb` |
-| MacMPEC (92 problems) | `MPECSS_Kaggle_MacMPEC.ipynb` |
+| MacMPEC (191 problems) | `MPECSS_Kaggle_MacMPEC.ipynb` |
 | NosBench Group 1 (201 problems) | `MPECSS_Kaggle_NosBench_Group1.ipynb` |
 | NosBench Group 2 (201 problems) | `MPECSS_Kaggle_NosBench_Group2.ipynb` |
 | NosBench Group 3 (201 problems) | `MPECSS_Kaggle_NosBench_Group3.ipynb` |

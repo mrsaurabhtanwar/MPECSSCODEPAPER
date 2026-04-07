@@ -17,6 +17,7 @@ import os
 import gc
 import time
 import copy
+import inspect
 import queue as _queue_module
 import logging
 import argparse
@@ -724,6 +725,39 @@ def _hydrate_queue_result(
     return res
 
 
+def _invoke_lpec_refinement_loop(
+    results: Dict[str, Any],
+    problem: Dict[str, Any],
+    params: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """
+    Call Phase III refinement with graceful compatibility for older callables.
+
+    Some injected or monkeypatched implementations still expose the historical
+    `(results, problem)` signature. We only pass the newer `params=` keyword
+    when the target callable explicitly supports it.
+    """
+    if params is None:
+        return lpec_refinement_loop(results, problem)
+
+    try:
+        signature = inspect.signature(lpec_refinement_loop)
+    except (TypeError, ValueError):
+        signature = None
+
+    if signature is None:
+        return lpec_refinement_loop(results, problem, params=params)
+
+    accepts_params = "params" in signature.parameters
+    accepts_kwargs = any(
+        parameter.kind == inspect.Parameter.VAR_KEYWORD
+        for parameter in signature.parameters.values()
+    )
+    if accepts_params or accepts_kwargs:
+        return lpec_refinement_loop(results, problem, params=params)
+    return lpec_refinement_loop(results, problem)
+
+
 def _mark_audit_terminal_status(
     audit_json_path: Optional[str],
     status: str,
@@ -1077,7 +1111,7 @@ def run_single_problem_internal(
                 "tol_comp": max(1e-8, eps_tol),
                 "rho_init": 0.01,
             }
-            res = lpec_refinement_loop(res, problem, params=lpec_refine_params)
+            res = _invoke_lpec_refinement_loop(res, problem, params=lpec_refine_params)
             res = bstat_post_check(res, problem)
             res = _preserve_stronger_raw_certificate(raw_res, res)
             time_lpec = time.perf_counter() - time_lpec_start

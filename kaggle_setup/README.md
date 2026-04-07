@@ -14,7 +14,7 @@ This folder contains everything needed to run MPECSS benchmarks on Kaggle.
 | Notebook | Dataset | Problems | Estimated Time |
 |----------|---------|----------|----------------|
 | `MPECSS_Kaggle_MPECLib.ipynb` | MPECLib | 92 | ~4-6 hours |
-| `MPECSS_Kaggle_MacMPEC.ipynb` | MacMPEC | 92 | ~4-6 hours |
+| `MPECSS_Kaggle_MacMPEC.ipynb` | MacMPEC | 191 | ~4-6 hours |
 | `MPECSS_Kaggle_NosBench_Group1.ipynb` | NosBench Group 1 | 201 | ~8-10 hours |
 | `MPECSS_Kaggle_NosBench_Group2.ipynb` | NosBench Group 2 | 201 | ~8-10 hours |
 | `MPECSS_Kaggle_NosBench_Group3.ipynb` | NosBench Group 3 | 201 | ~8-10 hours |

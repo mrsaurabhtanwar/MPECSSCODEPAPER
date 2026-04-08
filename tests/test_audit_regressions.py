@@ -12,12 +12,14 @@ import pandas as pd
 from mpecss.helpers import benchmark_utils
 from mpecss.helpers.comp_residuals import benchmark_feas_res, biactive_indices, biactive_residual
 from mpecss.helpers.loaders.mpeclib_loader import load_mpeclib
+from mpecss.helpers.solver_metrics import extract_ipopt_kkt_res
 from mpecss.helpers.utils import export_csv
 from mpecss.phase_2.mpecss import run_mpecss
 from mpecss.phase_3.bstationarity import bstat_post_check
 
 
 bnlp_module = importlib.import_module("mpecss.phase_3.bnlp_polish")
+lpec_module = importlib.import_module("mpecss.phase_3.lpec_refine")
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -196,6 +198,17 @@ def test_bstat_post_check_marks_uncertified_results_unverifiable(monkeypatch) ->
     assert checked["b_stationarity"] is None
 
 
+def test_extract_ipopt_kkt_res_uses_last_finite_iteration_values() -> None:
+    stats = {
+        "iterations": {
+            "inf_du": [2.0, 5e-7],
+            "inf_pr": [1.0, 3e-8],
+        }
+    }
+
+    assert np.isclose(extract_ipopt_kkt_res(stats), 5e-7)
+
+
 def test_build_bnlp_respects_shifted_h_lower_bound(monkeypatch) -> None:
     problem = _toy_shifted_problem(free_g=False)
     captured = {}
@@ -253,6 +266,7 @@ def test_bnlp_polish_invalidates_old_stationarity_on_accept(monkeypatch) -> None
         lambda *args, **kwargs: {
             "z_polish": np.zeros(1),
             "f_val": 0.5,
+            "kkt_res": 3e-7,
             "status": "Solve_Succeeded",
             "success": True,
             "cpu_time": 0.01,
@@ -263,6 +277,7 @@ def test_bnlp_polish_invalidates_old_stationarity_on_accept(monkeypatch) -> None
         "z_final": np.zeros(1),
         "f_final": 1.0,
         "comp_res": 1e-3,
+        "kkt_res": 1e-2,
         "stationarity": "C",
         "status": "converged",
         "sign_test_pass": True,
@@ -276,6 +291,7 @@ def test_bnlp_polish_invalidates_old_stationarity_on_accept(monkeypatch) -> None
     assert polished["stationarity"] == "FAIL"
     assert polished["sign_test_pass"] is None
     assert polished["b_stationarity"] is None
+    assert polished["kkt_res"] == 3e-7
 
 
 def test_bnlp_polish_acceptance_uses_benchmark_feasibility(monkeypatch) -> None:
@@ -286,6 +302,7 @@ def test_bnlp_polish_acceptance_uses_benchmark_feasibility(monkeypatch) -> None:
         lambda *args, **kwargs: {
             "z_polish": np.zeros(1),
             "f_val": 0.5,
+            "kkt_res": 3e-7,
             "status": "Solve_Succeeded",
             "success": True,
             "cpu_time": 0.01,
@@ -341,6 +358,39 @@ def test_bnlp_polish_rejects_worse_objective(monkeypatch) -> None:
     assert polished["status"] == "converged"
 
 
+def test_lpec_refine_updates_kkt_res_when_bnlp_step_changes_point(monkeypatch) -> None:
+    calls = {"count": 0}
+
+    def fake_certify(*args, **kwargs):
+        calls["count"] += 1
+        if calls["count"] == 1:
+            return False, 1.0, False, {"best_direction": np.zeros(1), "timed_out": False}
+        return True, 0.0, True, {"lpec_status": "complete", "classification": "B-stationary"}
+
+    monkeypatch.setattr(lpec_module, "certify_bstationarity", fake_certify)
+    monkeypatch.setattr(lpec_module, "identify_active_set", lambda *args, **kwargs: ([0], [], [], []))
+    monkeypatch.setattr(
+        lpec_module,
+        "_build_bnlp",
+        lambda *args, **kwargs: {
+            "success": True,
+            "f_val": -1.0,
+            "z_polish": np.zeros(1),
+            "kkt_res": 3e-7,
+        },
+    )
+    monkeypatch.setattr(lpec_module, "complementarity_residual", lambda *args, **kwargs: 1e-9)
+
+    refined = lpec_module.lpec_refinement_loop(
+        {"z_final": np.ones(1), "f_final": 0.0, "kkt_res": 1e-3},
+        _toy_problem(),
+        params={"N_out": 2, "N_in": 1, "tol_comp": 1e-8, "tol_B": 1e-10},
+    )
+
+    assert refined["status"] == "converged"
+    assert refined["kkt_res"] == 3e-7
+
+
 def test_export_csv_writes_headers_for_empty_logs() -> None:
     captured = {}
 
@@ -382,7 +432,7 @@ def test_run_single_problem_internal_records_raw_and_final_audit_data(monkeypatc
             "f_final": 0.1225,
             "objective": 0.1225,
             "comp_res": 0.24,
-            "kkt_res": float("nan"),
+            "kkt_res": 0.125,
             "stationarity": "FAIL",
             "n_outer_iters": 0,
             "n_restorations": 0,
@@ -412,11 +462,13 @@ def test_run_single_problem_internal_records_raw_and_final_audit_data(monkeypatc
         out["z_final"] = np.array([0.25])
         out["f_final"] = 0.0
         out["comp_res"] = 0.0
+        out["kkt_res"] = 1e-9
         out["bnlp_polish"] = {
             "accepted": True,
             "status": "Solve_Succeeded",
             "success": True,
             "f_val": 0.0,
+            "kkt_res": 1e-9,
             "original_f_val": res["f_final"],
             "improvement": res["f_final"],
             "comp_res_polish": 0.0,
@@ -470,8 +522,10 @@ def test_run_single_problem_internal_records_raw_and_final_audit_data(monkeypatc
 
     assert row["raw_status"] == "stationarity_unverifiable"
     assert row["raw_comp_res"] == 0.24
+    assert row["raw_kkt_res"] == 0.125
     assert row["status"] == "converged"
     assert row["comp_res"] == 0.0
+    assert row["kkt_res"] == 1e-9
     assert row["audit_postprocess_applied"] is True
     assert row["audit_final_source"] == "external_bnlp"
     assert row["audit_json_path"] in audit_writes

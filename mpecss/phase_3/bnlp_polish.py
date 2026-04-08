@@ -18,6 +18,7 @@ import numpy as np
 import casadi as ca
 from mpecss.helpers.comp_residuals import benchmark_feas_res
 from mpecss.helpers.loaders.macmpec_loader import evaluate_GH
+from mpecss.helpers.solver_metrics import extract_ipopt_kkt_res
 from mpecss.helpers.solver_wrapper import DEFAULT_IPOPT_OPTS, is_solver_success
 
 logger = logging.getLogger('mpecss.bnlp_polish')
@@ -241,6 +242,7 @@ def _build_bnlp(z_star, problem, I1, I2, I3=None, solver_opts=None, f_cut=None, 
         
         stats = solver.stats()
         status = stats.get('return_status', 'unknown')
+        kkt_res = extract_ipopt_kkt_res(stats)
         
         z_polish = np.asarray(sol['x']).flatten()
         f_val = float(sol['f'])
@@ -252,10 +254,12 @@ def _build_bnlp(z_star, problem, I1, I2, I3=None, solver_opts=None, f_cut=None, 
         f_val = float('inf')
         status = 'Exception'
         success = False
+        kkt_res = float('nan')
     
     return {
         'z_polish': z_polish,
         'f_val': f_val,
+        'kkt_res': kkt_res,
         'status': status,
         'success': success,
         'cpu_time': cpu_time
@@ -303,6 +307,7 @@ def bnlp_polish(results, problem, solver_opts=None, eps_tol=1e-6):
         'bnlp_status': bnlp_result['status'],
         'bnlp_success': bnlp_result['success'],
         'f_val': bnlp_result['f_val'],
+        'kkt_res': bnlp_result.get('kkt_res'),
         'cpu_time': bnlp_result['cpu_time'],
         'bnlp_cpu_time': bnlp_result['cpu_time'],
         'original_f_val': f_star,
@@ -336,6 +341,7 @@ def bnlp_polish(results, problem, solver_opts=None, eps_tol=1e-6):
             results['z_final'] = z_polish
             results['f_final'] = f_polish
             results['comp_res'] = comp_res_polish
+            results['kkt_res'] = bnlp_result.get('kkt_res', float('nan'))
             _invalidate_stationarity_claim(results, 'bnlp_polish')
             logger.info(f'BNLP polish accepted: f={f_polish:.6e} (was {f_star:.6e}), comp_res={comp_res_polish:.2e}')
         else:
@@ -374,6 +380,7 @@ def bnlp_polish(results, problem, solver_opts=None, eps_tol=1e-6):
                 results['z_final'] = ultra_result['z_polish']
                 results['f_final'] = ultra_result['f_val']
                 results['comp_res'] = comp_ultra
+                results['kkt_res'] = ultra_result.get('kkt_res', float('nan'))
                 logger.info(f"Ultra-tight polish: f={ultra_result['f_val']:.10e}, comp={comp_ultra:.2e}")
     
     return results
@@ -400,6 +407,7 @@ def _try_alternative_partitions(results, problem, z_star, f_star, I1_base, I2_ba
     t_start = time.time()
     best_f = f_star
     best_z = z_star.copy()
+    best_kkt_res = results.get('kkt_res', float('nan'))
     best_accepted = False
     n_tried = 0
     I1_set = set(I1_base)
@@ -436,6 +444,7 @@ def _try_alternative_partitions(results, problem, z_star, f_star, I1_base, I2_ba
         
         best_f = bnlp_result['f_val']
         best_z = bnlp_result['z_polish']
+        best_kkt_res = bnlp_result.get('kkt_res', float('nan'))
         best_accepted = True
         logger.info(f'  Single flip {flip_i}: f={best_f:.6e}, comp={comp_res:.2e}')
     
@@ -443,6 +452,7 @@ def _try_alternative_partitions(results, problem, z_star, f_star, I1_base, I2_ba
         results['z_final'] = best_z
         results['f_final'] = best_f
         results['comp_res'] = benchmark_feas_res(best_z, problem)
+        results['kkt_res'] = best_kkt_res
         results['bnlp_polish']['accepted'] = True
         results['bnlp_polish']['alt_partition_used'] = True
         results['bnlp_polish']['n_partitions_tried'] = n_tried

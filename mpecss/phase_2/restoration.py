@@ -22,6 +22,7 @@ from typing import List, Optional, Dict, Any
 from collections import OrderedDict
 import numpy as np
 import casadi as ca
+from mpecss.helpers.solver_metrics import extract_ipopt_kkt_res
 from mpecss.helpers.solver_wrapper import solve_smooth_subproblem, is_solver_success
 
 logger = logging.getLogger('mpecss.restoration')
@@ -299,6 +300,7 @@ def quadratic_regularizer(z, t_k, delta_k, problem, biactive_idx, gamma=1.0, sol
             z_new = np.asarray(sol['x']).flatten()
             stats = solver.stats()
             status = stats.get('return_status', 'unknown')
+            kkt_res = extract_ipopt_kkt_res(stats)
             
             if is_solver_success(status):
                 logger.info(f'quadratic_regularizer: attempt {attempt+1} succeeded, gamma={gamma}')
@@ -307,6 +309,7 @@ def quadratic_regularizer(z, t_k, delta_k, problem, biactive_idx, gamma=1.0, sol
                     'lam_g': np.asarray(sol['lam_g']).flatten(),
                     'lam_x': np.asarray(sol['lam_x']).flatten(),
                     'f_val': float(sol['f']),
+                    'kkt_res': kkt_res,
                     'status': status,
                     'cpu_time': cpu_time,
                     'g_val': np.asarray(sol['g']).flatten(),

@@ -55,6 +55,7 @@ def lpec_refinement_loop(
 
     z_k    = results['z_final'].copy()
     f_k    = results.get('f_final', float('inf'))
+    kkt_k  = results.get('kkt_res', float('nan'))
     rho    = p['rho_init']
 
     total_bnlps  = 0
@@ -126,6 +127,7 @@ def lpec_refinement_loop(
                 results['z_final']       = z_k
                 results['f_final']       = f_k
                 results['comp_res']      = complementarity_residual(z_k, problem)
+                results['kkt_res']       = kkt_k
                 results['b_stationarity'] = True
                 results['stationarity']  = 'B'
                 results['status']        = 'converged'  # Fix 1: Override any failure status when B-stat certified
@@ -207,6 +209,7 @@ def lpec_refinement_loop(
                 )
                 z_k        = z_new
                 f_k        = f_new
+                kkt_k      = bnlp_result.get('kkt_res', float('nan'))
                 # Expand trust-region on success
                 rho        = min(p['rho_ub'], rho / p['gamma_L'])
                 inner_done = True
@@ -250,6 +253,7 @@ def lpec_refinement_loop(
         results['z_final']  = z_k
         results['f_final']  = f_k
         results['comp_res'] = complementarity_residual(z_k, problem)
+        results['kkt_res']  = kkt_k
 
     results['lpec_refine'] = refine_details
 

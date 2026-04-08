@@ -17,6 +17,7 @@ import time
 import logging
 import numpy as np
 import casadi as ca
+from mpecss.helpers.solver_metrics import extract_ipopt_kkt_res
 from mpecss.helpers.solver_cache import (
     _TEMPLATE_CACHE,
     _SOLVER_CACHE,
@@ -307,6 +308,7 @@ def solve_smooth_subproblem(z0, t_k, delta_k, problem, solver_opts=None,
         stats = solver.stats()
         status = stats.get('return_status', 'unknown')
         iter_count = stats.get('iter_count', -1)
+        kkt_res = extract_ipopt_kkt_res(stats)
         
         z_k = np.asarray(sol['x']).flatten()
         lam_g = np.asarray(sol['lam_g']).flatten()
@@ -323,12 +325,14 @@ def solve_smooth_subproblem(z0, t_k, delta_k, problem, solver_opts=None,
         z_k, lam_g, lam_x, f_val, g_val = _zero_fallback(z0, n_x, n_g)
         status = 'Exception'
         iter_count = -1
+        kkt_res = float("nan")
     
     return {
         'z_k': z_k,
         'lam_g': lam_g,
         'lam_x': lam_x,
         'f_val': f_val,
+        'kkt_res': kkt_res,
         'status': status,
         'cpu_time': cpu_time,
         'g_val': g_val,
@@ -456,6 +460,7 @@ def _try_sqp_solve(z0, t_k, delta_k, problem, lam_g0, lam_x0, smoothing):
             'lam_g': sqp_sol['lam_g'],
             'lam_x': sqp_sol['lam_x'],
             'f_val': sqp_sol['f'],
+            'kkt_res': sqp_sol.get('kkt_res', float('nan')),
             'status': sqp_sol['status'],
             'cpu_time': sqp_sol['cpu_time'],
             'g_val': sqp_sol['g'],

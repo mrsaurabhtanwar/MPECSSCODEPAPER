@@ -119,6 +119,15 @@ def _safe_obj(problem: Dict[str, Any], z: np.ndarray) -> float:
         return float("inf")
 
 
+def _coerce_kkt_res(value: Any) -> float:
+    """Normalize optional KKT-style diagnostics to a finite float or NaN."""
+    try:
+        value = float(value)
+    except (TypeError, ValueError):
+        return float("nan")
+    return value if np.isfinite(value) else float("nan")
+
+
 def _bstat_unsupported_reason(problem: Dict[str, Any]) -> Optional[str]:
     """Return a reason when the current B-stationarity certificate is unsupported."""
     # We now properly handle nonstandard bounds in LPEC enumeration
@@ -237,9 +246,11 @@ def run_mpecss(problem: Dict[str, Any], z0: np.ndarray, params: Optional[Dict[st
         "z": z_k.copy(),
         "f": _safe_obj(problem, z_k),
         "comp_res": prev_comp_res,
+        "kkt_res": float("nan"),
         "iter": 0,
         "sign_pass": None,
     }
+    current_kkt_res = float("nan")
 
     current_regime = "initial"
     n_comp = int(problem.get("n_comp", 0))
@@ -295,12 +306,14 @@ def run_mpecss(problem: Dict[str, Any], z0: np.ndarray, params: Optional[Dict[st
 
                 # Update best if this point is better
                 _early_f = float(_early_sol.get("f_val", _safe_obj(problem, _early_z)))
+                _early_kkt_res = _coerce_kkt_res(_early_sol.get("kkt_res"))
                 if _early_comp_res < best["comp_res"]:
                     best = {"z": _early_z.copy(), "f": _early_f,
-                            "comp_res": _early_comp_res, "iter": 0,
+                            "comp_res": _early_comp_res, "kkt_res": _early_kkt_res, "iter": 0,
                             "sign_pass": _early_sign_pass}
                     z_k = _early_z.copy()
                     prev_comp_res = _early_comp_res
+                    current_kkt_res = _early_kkt_res
 
                 if _early_sign_pass and _early_comp_res <= eps_tol:
                     # S-STATIONARY CANDIDATE: Sign test passes with excellent comp_res
@@ -492,7 +505,7 @@ def run_mpecss(problem: Dict[str, Any], z0: np.ndarray, params: Optional[Dict[st
                 )
                 if prev_comp_res < best["comp_res"]:
                     best = {"z": z_k.copy(), "f": _safe_obj(problem, z_k),
-                            "comp_res": prev_comp_res, "iter": k,
+                            "comp_res": prev_comp_res, "kkt_res": current_kkt_res, "iter": k,
                             "sign_pass": None}
                 status = "timeout"  # Internal wall-clock budget exhausted
                 break
@@ -509,6 +522,7 @@ def run_mpecss(problem: Dict[str, Any], z0: np.ndarray, params: Optional[Dict[st
         z_new = np.asarray(sol["z_k"]).flatten()
         solver_status = str(sol["status"])
         nlp_iters = sol.get("iter_count", 0)
+        solver_kkt_res = _coerce_kkt_res(sol.get("kkt_res"))
 
         if not is_solver_success(solver_status):
             # Save final failure log before breaking.
@@ -520,10 +534,11 @@ def run_mpecss(problem: Dict[str, Any], z0: np.ndarray, params: Optional[Dict[st
             # but the warm-start point already satisfied comp_res <= eps_tol.
             if prev_comp_res < best["comp_res"]:
                 best = {"z": z_k.copy(), "f": _safe_obj(problem, z_k),
-                        "comp_res": prev_comp_res, "iter": k + 1,
+                        "comp_res": prev_comp_res, "kkt_res": current_kkt_res, "iter": k + 1,
                         "sign_pass": None}
             log = IterationLog(
                 iteration=k + 1, t_k=t_k, comp_res=prev_comp_res,
+                kkt_res=current_kkt_res,
                 solver_status=solver_status, t_update_regime=current_regime,
                 nlp_iter_count=nlp_iters, z_k=z_k.copy()
             )
@@ -540,10 +555,11 @@ def run_mpecss(problem: Dict[str, Any], z0: np.ndarray, params: Optional[Dict[st
         # sign_test.py uses mpeclib_loader (min(|G|,|H|)) which is stricter.
         comp_res = float(complementarity_residual(z_new, problem))
         f_val = float(sol["f_val"])
+        point_kkt_res = solver_kkt_res
 
         # Track best point encountered
         if (comp_res < best["comp_res"]) or (comp_res <= best["comp_res"] and f_val < best["f"]):
-            best = {"z": z_new.copy(), "f": f_val, "comp_res": comp_res, "iter": k + 1,
+            best = {"z": z_new.copy(), "f": f_val, "comp_res": comp_res, "kkt_res": point_kkt_res, "iter": k + 1,
                     "sign_pass": sign_pass}
 
         # ══════════════════════════════════════════════════════════════════════════
@@ -597,6 +613,7 @@ def run_mpecss(problem: Dict[str, Any], z0: np.ndarray, params: Optional[Dict[st
                 sign_pass = bool(stationarity["sign_pass"])
                 comp_res = float(complementarity_residual(z_new, problem))
                 f_val = float(restored.get("f_val", f_val))
+                point_kkt_res = _coerce_kkt_res(restored.get("kkt_res"))
 
                 # ── Max-restoration cap ───────────────────────────────────────
                 if total_restorations >= _max_restorations:
@@ -606,7 +623,7 @@ def run_mpecss(problem: Dict[str, Any], z0: np.ndarray, params: Optional[Dict[st
                     )
                     if comp_res < best["comp_res"]:
                         best = {"z": z_new.copy(), "f": f_val,
-                                "comp_res": comp_res, "iter": k + 1,
+                                "comp_res": comp_res, "kkt_res": point_kkt_res, "iter": k + 1,
                                 "sign_pass": sign_pass}
                     status = "max_restorations"  # Hit restoration budget without convergence
                     break
@@ -644,9 +661,10 @@ def run_mpecss(problem: Dict[str, Any], z0: np.ndarray, params: Optional[Dict[st
                                         z_new = _rescue_result['z_polish'].copy()
                                         comp_res = _rescue_comp
                                         f_val = _rescue_result['f_val']
+                                        point_kkt_res = _coerce_kkt_res(_rescue_result.get('kkt_res'))
                                         if comp_res < best["comp_res"]:
                                             best = {"z": z_new.copy(), "f": f_val,
-                                                    "comp_res": comp_res, "iter": k + 1,
+                                                    "comp_res": comp_res, "kkt_res": point_kkt_res, "iter": k + 1,
                                                     "sign_pass": sign_pass}
                                         if comp_res <= eps_tol:
                                             logger.info(f"    Early BNLP rescue SUCCESS: comp_res={comp_res:.3e}")
@@ -666,7 +684,7 @@ def run_mpecss(problem: Dict[str, Any], z0: np.ndarray, params: Optional[Dict[st
                     )
                     if comp_res < best["comp_res"]:
                         best = {"z": z_new.copy(), "f": f_val,
-                                "comp_res": comp_res, "iter": k + 1,
+                                "comp_res": comp_res, "kkt_res": point_kkt_res, "iter": k + 1,
                                 "sign_pass": sign_pass}
                     status = "restoration_stagnation"  # Restoration loop stuck without progress
                     break
@@ -676,6 +694,7 @@ def run_mpecss(problem: Dict[str, Any], z0: np.ndarray, params: Optional[Dict[st
             t_k=t_k,
             delta_k=delta_k,
             comp_res=comp_res,
+            kkt_res=point_kkt_res,
             objective=f_val,
             sign_test="PASS" if sign_pass else "FAIL",
             sign_test_reason=stationarity["sign_reason"],
@@ -711,9 +730,10 @@ def run_mpecss(problem: Dict[str, Any], z0: np.ndarray, params: Optional[Dict[st
         )
 
         if comp_res <= eps_tol and sign_pass:
-            best = {"z": z_new.copy(), "f": f_val, "comp_res": comp_res, "iter": k + 1,
+            best = {"z": z_new.copy(), "f": f_val, "comp_res": comp_res, "kkt_res": point_kkt_res, "iter": k + 1,
                     "sign_pass": True}
             z_k = z_new
+            current_kkt_res = point_kkt_res
             # S-stationary candidate found in Phase II
             # Don't set final status yet - Phase III will certify B-stationarity
             logger.info(
@@ -740,7 +760,7 @@ def run_mpecss(problem: Dict[str, Any], z0: np.ndarray, params: Optional[Dict[st
                 )
                 if comp_res < best["comp_res"]:
                     best = {"z": z_new.copy(), "f": f_val,
-                            "comp_res": comp_res, "iter": k + 1,
+                            "comp_res": comp_res, "kkt_res": point_kkt_res, "iter": k + 1,
                             "sign_pass": sign_pass}
                 status = "stagnation"  # Adaptive jumps exhausted without convergence
                 break
@@ -765,6 +785,7 @@ def run_mpecss(problem: Dict[str, Any], z0: np.ndarray, params: Optional[Dict[st
 
         z_k = z_new
         prev_comp_res = comp_res
+        current_kkt_res = point_kkt_res
 
     # Post-loop: Check if best point has good comp_res (even if sign test unknown)
     if best["comp_res"] <= eps_tol:
@@ -773,6 +794,7 @@ def run_mpecss(problem: Dict[str, Any], z0: np.ndarray, params: Optional[Dict[st
             f"proceeding to Phase III for B-certification."
         )
         z_k = best["z"]
+        current_kkt_res = best["kkt_res"]
 
     # ═══════════════════════════════════════════════════════════════════════════
     # PHASE III: THE FINAL POLISH & CERTIFICATION
@@ -834,6 +856,7 @@ def run_mpecss(problem: Dict[str, Any], z0: np.ndarray, params: Optional[Dict[st
                 status = "converged"
                 final_stationarity = "B"
                 z_k = z_best
+                current_kkt_res = best["kkt_res"]
             else:
                 # Either LICQ fails OR sign_pass is False
                 # Must run full LPEC enumeration to check B-stationarity
@@ -862,6 +885,7 @@ def run_mpecss(problem: Dict[str, Any], z0: np.ndarray, params: Optional[Dict[st
                     status = "converged"
                     final_stationarity = "B"
                     z_k = z_best
+                    current_kkt_res = best["kkt_res"]
                 elif b_stationarity_certified is False:
                     # Not B-stationary: descent direction exists
                     sign_pass = False
@@ -878,6 +902,7 @@ def run_mpecss(problem: Dict[str, Any], z0: np.ndarray, params: Optional[Dict[st
                         status = "converged"
                         final_stationarity = "C"
                         z_k = z_best
+                        current_kkt_res = best["kkt_res"]
                     else:
                         # C-stationary but not B-stationary
                         logger.warning(
@@ -887,6 +912,7 @@ def run_mpecss(problem: Dict[str, Any], z0: np.ndarray, params: Optional[Dict[st
                         status = "converged"  # Still converged to a stationary point
                         final_stationarity = "C"
                         z_k = z_best
+                        current_kkt_res = best["kkt_res"]
                 else:
                     sign_pass = False
                     logger.warning(
@@ -897,6 +923,7 @@ def run_mpecss(problem: Dict[str, Any], z0: np.ndarray, params: Optional[Dict[st
                     status = "stationarity_unverifiable"
                     final_stationarity = "FAIL"
                     z_k = z_best
+                    current_kkt_res = best["kkt_res"]
 
         except Exception as e:
             logger.warning(f"Phase III B-stationarity check failed with error: {e}")
@@ -904,6 +931,7 @@ def run_mpecss(problem: Dict[str, Any], z0: np.ndarray, params: Optional[Dict[st
             final_stationarity = "FAIL"
             sign_pass = False
             z_k = best["z"]
+            current_kkt_res = best["kkt_res"]
             b_stationarity_certified = None
             bstat_details = {'error': str(e), 'lpec_status': 'exception'}
     else:
@@ -986,7 +1014,7 @@ def run_mpecss(problem: Dict[str, Any], z0: np.ndarray, params: Optional[Dict[st
                             z_best = _ultra_z.copy()
                             f_best = _ultra_f
                             best = {"z": z_best.copy(), "f": f_best,
-                                    "comp_res": _ultra_comp, "iter": best["iter"],
+                                    "comp_res": _ultra_comp, "kkt_res": _coerce_kkt_res(_ultra_sol.get("kkt_res")), "iter": best["iter"],
                                     "sign_pass": None}
                             _last_good_t = _try_t  # Update for next iteration
                         else:
@@ -1040,6 +1068,7 @@ def run_mpecss(problem: Dict[str, Any], z0: np.ndarray, params: Optional[Dict[st
                                     'z': z_polish.copy(),
                                     'f': f_polish,
                                     'comp_res': comp_res_polish,
+                                    'kkt_res': _coerce_kkt_res(bnlp_result.get('kkt_res')),
                                     'tol': _bnlp_tol
                                 }
                                 _best_I_biactive = I_biactive
@@ -1055,7 +1084,7 @@ def run_mpecss(problem: Dict[str, Any], z0: np.ndarray, params: Optional[Dict[st
                         z_best = _best_bnlp_result['z'].copy()
                         f_best = _best_bnlp_result['f']
                         best = {"z": z_best.copy(), "f": f_best,
-                                "comp_res": _best_bnlp_result['comp_res'], "iter": best["iter"],
+                                "comp_res": _best_bnlp_result['comp_res'], "kkt_res": _best_bnlp_result['kkt_res'], "iter": best["iter"],
                                 "sign_pass": None}
 
                     # ── Strategy 3: Partition flipping ─────────────────────────────
@@ -1084,7 +1113,7 @@ def run_mpecss(problem: Dict[str, Any], z0: np.ndarray, params: Optional[Dict[st
                                     z_best = alt_result['z_polish'].copy()
                                     f_best = alt_result['f_val']
                                     best = {"z": z_best.copy(), "f": f_best,
-                                            "comp_res": alt_comp, "iter": best["iter"],
+                                            "comp_res": alt_comp, "kkt_res": _coerce_kkt_res(alt_result.get('kkt_res')), "iter": best["iter"],
                                             "sign_pass": None}
                                     if alt_comp <= eps_tol:
                                         break
@@ -1096,6 +1125,7 @@ def run_mpecss(problem: Dict[str, Any], z0: np.ndarray, params: Optional[Dict[st
                 if best["comp_res"] <= eps_tol:
                     logger.info(f"Final push SUCCESS: comp_res={best['comp_res']:.3e} <= eps_tol")
                     z_k = best["z"]
+                    current_kkt_res = best["kkt_res"]
 
                     # Try to certify stationarity type
                     try:
@@ -1171,6 +1201,7 @@ def run_mpecss(problem: Dict[str, Any], z0: np.ndarray, params: Optional[Dict[st
             )
             status = "comp_infeasible"  # Could not achieve complementarity feasibility
             z_k = best["z"]
+            current_kkt_res = best["kkt_res"]
 
     f_final = _safe_obj(problem, z_k)
     comp_final = complementarity_residual(z_k, problem)
@@ -1193,7 +1224,7 @@ def run_mpecss(problem: Dict[str, Any], z0: np.ndarray, params: Optional[Dict[st
         "f_final": f_final,
         "objective": f_final,
         "comp_res": comp_final,
-        "kkt_res": float("nan"),
+        "kkt_res": current_kkt_res,
         "stationarity": final_stationarity if status == "converged" else "FAIL",
         "n_outer_iters": len(logs),
         "n_restorations": total_restorations,

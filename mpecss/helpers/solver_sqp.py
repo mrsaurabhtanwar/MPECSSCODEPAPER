@@ -13,6 +13,7 @@ import time
 import logging
 import numpy as np
 import casadi as ca
+from mpecss.helpers.solver_metrics import combine_kkt_residuals
 
 logger = logging.getLogger('mpecss.solver.sqp')
 
@@ -378,6 +379,7 @@ class SQPSolver:
         
         status = 'max_iter_reached'
         iter_count = 0
+        kkt_res = float('nan')
         
         for k in range(self.sqp_opts['max_iter']):
             iter_count = k + 1
@@ -423,6 +425,7 @@ class SQPSolver:
             converged, stalled, opt_err, feas_err = self._check_convergence(
                 grad_L, g_k, lbg, ubg, d
             )
+            kkt_res = combine_kkt_residuals(opt_err, feas_err)
             
             if self.sqp_opts['print_level'] >= 2:
                 logger.info(f"SQP iter {k}: f={f_k:.6e}, opt={opt_err:.2e}, feas={feas_err:.2e}, |d|={np.linalg.norm(d):.2e}")
@@ -457,6 +460,7 @@ class SQPSolver:
             'g': g_final,
             'lam_g': lam_g,
             'lam_x': lam_x,
+            'kkt_res': kkt_res,
             'status': status,
             'iter_count': iter_count,
             'cpu_time': cpu_time,

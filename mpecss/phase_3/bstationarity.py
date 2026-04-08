@@ -175,106 +175,6 @@ def _classify_complementarity_indices(z, problem, tol=_ACTIVE_TOL):
         Indices where G_shifted_i ≈ 0 and H_shifted_i > tol (G-active only).
     I_H : list[int]
         Indices where H_shifted_i ≈ 0 and G_shifted_i > tol (H-active only).
-    I_B : list[int]
-        Biactive indices where both |G_shifted_i| < tol and |H_shifted_i| < tol.
-    I_free : list[int]
-        Indices where both G_shifted_i > tol and H_shifted_i > tol (neither active).
-    """
-    from mpecss.helpers.loaders.macmpec_loader import evaluate_GH
-    G, H = evaluate_GH(z, problem)
-
-    return None
-
-
-def _compute_jacobians(z, problem):
-    """
-    Compute Jacobians of f, g_orig, G, H at point z.
-
-    Uses LRU cache to prevent unbounded memory growth during long benchmarks.
-
-    Returns
-    -------
-    grad_f : np.ndarray (n_x,)
-        Gradient of objective.
-    J_g : np.ndarray (n_con, n_x) or None
-        Jacobian of original constraints (None if no constraints).
-    J_G : np.ndarray (n_comp, n_x)
-        Jacobian of G.
-    J_H : np.ndarray (n_comp, n_x)
-        Jacobian of H.
-    """
-    n_x = problem['n_x']
-    z = np.asarray(z).flatten()
-    prob_name = problem.get('name', 'unknown')
-
-    # Include n_x, n_comp, n_con in cache key to avoid dimension mismatches
-    # between different benchmark suites with same problem names
-    n_comp = problem.get('n_comp', 0)
-    n_con = problem.get('n_con', 0)
-    family = problem.get('family', 'unknown')
-    cache_key = f"{prob_name}|{family}|{n_x}|{n_comp}|{n_con}"
-
-    # Check LRU cache
-    cached = _JACOBIAN_CACHE.get(cache_key)
-    if cached is None:
-        # Build Jacobian functions
-        _sym = ca.MX.sym if n_x >= 500 else ca.SX.sym
-        x_sym = _sym('x', n_x)
-
-        info = problem['build_casadi'](0, 0)
-        grad_f_expr = ca.jacobian(info['f'], info['x'])
-        grad_f_fn = ca.Function('grad_f', [info['x']], [grad_f_expr])
-
-        G_expr = problem['G_fn'](x_sym)
-        jac_G_fn = ca.Function('jac_G', [x_sym], [ca.jacobian(G_expr, x_sym)])
-
-        H_expr = problem['H_fn'](x_sym)
-        jac_H_fn = ca.Function('jac_H', [x_sym], [ca.jacobian(H_expr, x_sym)])
-
-        jac_g_fn = None
-        if n_con > 0:
-            g_orig_expr = info['g'][:n_con]
-            jac_g_fn = ca.Function('jac_g', [info['x']], [ca.jacobian(g_orig_expr, info['x'])])
-
-        # Store in LRU cache (may evict old entries)
-        _JACOBIAN_CACHE.put(cache_key, (grad_f_fn, jac_G_fn, jac_H_fn, jac_g_fn))
-        cached = (grad_f_fn, jac_G_fn, jac_H_fn, jac_g_fn)
-
-    grad_f_fn, jac_G_fn, jac_H_fn, jac_g_fn = cached
-
-    grad_f = np.asarray(grad_f_fn(z)).flatten()
-
-    J_G = np.asarray(jac_G_fn(z))
-    if J_G.ndim == 1:
-        J_G = J_G.reshape(1, -1)
-
-    J_H = np.asarray(jac_H_fn(z))
-    if J_H.ndim == 1:
-        J_H = J_H.reshape(1, -1)
-
-    J_g = None
-    if jac_g_fn is not None:
-        J_g = np.asarray(jac_g_fn(z))
-        if J_g.ndim == 1:
-            J_g = J_g.reshape(1, -1)
-
-    return grad_f, J_g, J_G, J_H
-
-
-def _classify_complementarity_indices(z, problem, tol=_ACTIVE_TOL):
-    """
-    Classify complementarity indices into active sets.
-
-    Uses shifted complementarity values to properly handle nonzero lower bounds
-    (MPEClib, NOSBENCH style). Activity is detected on the shifted functions
-    that are actually enforced in the NLP formulation.
-
-    Returns
-    -------
-    I_G : list[int]
-        Indices where G_shifted_i ≈ 0 and H_shifted_i > tol (G-active only).
-    I_H : list[int]
-        Indices where H_shifted_i ≈ 0 and G_shifted_i > tol (H-active only).
     I_ubH : list[int]
         Indices where H_shifted_i ≈ ubH_i and G_shifted_i > tol.
     I_B_lower : list[int]
@@ -723,7 +623,7 @@ def certify_bstationarity(z, problem, f_val=None, tol=_BSTAT_TOL, dir_bound=None
     return is_bstat, best_obj, licq_holds, details
 
 
-def bstat_post_check(result, problem, timeout=None, eps_tol=1e-7):
+def bstat_post_check(result, problem, timeout=None, eps_tol=1e-6):
     """
     Convenience wrapper: run B-stationarity check on MPECSS result.
 
@@ -740,7 +640,7 @@ def bstat_post_check(result, problem, timeout=None, eps_tol=1e-7):
     timeout : float or None
         Wall-clock timeout in seconds for the LPEC enumeration.
     eps_tol : float
-        Complementarity tolerance (default 1e-7).
+        Complementarity tolerance (default 1e-6).
 
     Returns
     -------

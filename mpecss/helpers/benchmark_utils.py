@@ -1087,9 +1087,10 @@ def run_single_problem_internal(
             )
         else:
             # Phase III
+            eps_tol = float(params.get("eps_tol", DEFAULT_PARAMS.get("eps_tol", 1e-6)))
             time_bnlp_start = time.perf_counter()
             audit.update_progress("external_bnlp_started", force=True, status="running")
-            res = bnlp_polish(res, problem)
+            res = bnlp_polish(res, problem, eps_tol=eps_tol)
             time_bnlp = time.perf_counter() - time_bnlp_start
             after_bnlp_res = copy.deepcopy(res)
             audit.attach_stage_summary("after_external_bnlp", _summarize_result_state(after_bnlp_res), force=True)
@@ -1102,7 +1103,6 @@ def run_single_problem_internal(
 
             time_lpec_start = time.perf_counter()
             audit.update_progress("external_lpec_bstat_started", force=True, status="running")
-            eps_tol = float(params.get("eps_tol", DEFAULT_PARAMS.get("eps_tol", 1e-6)))
             lpec_refine_params = {
                 # Keep the B-stat LP objective test strict, but allow the
                 # refinement loop to operate whenever the point is feasible at
@@ -1112,7 +1112,7 @@ def run_single_problem_internal(
                 "rho_init": 0.01,
             }
             res = _invoke_lpec_refinement_loop(res, problem, params=lpec_refine_params)
-            res = bstat_post_check(res, problem)
+            res = bstat_post_check(res, problem, eps_tol=eps_tol)
             res = _preserve_stronger_raw_certificate(raw_res, res)
             time_lpec = time.perf_counter() - time_lpec_start
             audit.attach_stage_summary("final", _summarize_result_state(res), force=True)

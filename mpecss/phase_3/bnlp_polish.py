@@ -16,7 +16,7 @@ import time
 from typing import Dict, Any, Optional, Tuple, List
 import numpy as np
 import casadi as ca
-from mpecss.helpers.comp_residuals import complementarity_residual
+from mpecss.helpers.comp_residuals import benchmark_feas_res
 from mpecss.helpers.loaders.macmpec_loader import evaluate_GH
 from mpecss.helpers.solver_wrapper import DEFAULT_IPOPT_OPTS, is_solver_success
 
@@ -93,11 +93,16 @@ def identify_active_set(z, problem, tol=_ACTIVE_TOL):
     ubH_finite = problem.get('ubH_finite', [])   # [(idx, ub_val), ...]
     ubH_map    = {i: ub for i, ub in ubH_finite}
 
-    # Apply bound shifts for nonstandard lower bounds (MPECLib/NOSBENCH)
+    # Apply bound shifts for nonstandard lower bounds (MPECLib/NOSBENCH).
+    # Free-G components use the raw G value, matching the homotopy model.
     lbG_eff = np.array(problem.get('lbG_eff', np.zeros(len(G))), dtype=float)
     lbH_eff = np.array(problem.get('lbH_eff', np.zeros(len(H))), dtype=float)
-    G_shifted = G - lbG_eff
-    H_shifted = H - lbH_eff
+    G_is_free = np.array(problem.get('G_is_free', [False] * len(G)), dtype=bool)
+    H_is_free = np.array(problem.get('H_is_free', [False] * len(H)), dtype=bool)
+    G_shifted = np.array(G, dtype=float)
+    H_shifted = np.array(H, dtype=float)
+    G_shifted[~G_is_free] = G_shifted[~G_is_free] - lbG_eff[~G_is_free]
+    H_shifted[~H_is_free] = H_shifted[~H_is_free] - lbH_eff[~H_is_free]
 
     I1 = []; I2 = []; I3 = []; I_biactive = []
 
@@ -144,12 +149,17 @@ def _build_bnlp(z_star, problem, I1, I2, I3=None, solver_opts=None, f_cut=None, 
     """
     if I3 is None:
         I3 = []
+    I1_set = set(I1)
     I3_set = set(I3)
     ubH_map = {i: ub for i, ub in problem.get('ubH_finite', [])}
 
     n_x = problem['n_x']
     n_comp = problem['n_comp']
     n_con = problem.get('n_con', 0)
+    lbG_eff = np.array(problem.get('lbG_eff', np.zeros(n_comp)), dtype=float)
+    lbH_eff = np.array(problem.get('lbH_eff', np.zeros(n_comp)), dtype=float)
+    G_is_free = np.array(problem.get('G_is_free', [False] * n_comp), dtype=bool)
+    H_is_free = np.array(problem.get('H_is_free', [False] * n_comp), dtype=bool)
 
     info = problem['build_casadi'](0, 0)
     x_sym = info['x']
@@ -172,30 +182,34 @@ def _build_bnlp(z_star, problem, I1, I2, I3=None, solver_opts=None, f_cut=None, 
     # Add complementarity constraints based on active set
     for i in range(n_comp):
         if i in I3_set:
-            # Upper-bound active (box-MCP): G_i ≤ 0, H_i = ubH_i
+            # Upper-bound active (box-MCP): G_shifted_i <= 0, H_i = ubH_i.
+            # For bounded G this means G_i <= lbG_eff[i]; for free G it is G_i <= 0.
             ub_val = ubH_map.get(i, _BIG)
             g_parts.append(G_expr[i])
             lbg_parts.append(-_BIG)
-            ubg_parts.append(0)          # G_i ≤ 0
+            ubg_parts.append(0.0 if G_is_free[i] else float(lbG_eff[i]))
             g_parts.append(H_expr[i])
             lbg_parts.append(ub_val)
-            ubg_parts.append(ub_val)     # H_i = ubH_i (equality)
-        elif i in I1:
-            # Interior active: G_i = 0, H_i ≥ 0
+            ubg_parts.append(ub_val)
+        elif i in I1_set:
+            # Lower-G active: G_shifted_i = 0, H_shifted_i >= 0.
             g_parts.append(G_expr[i])
-            lbg_parts.append(0)
-            ubg_parts.append(0)
+            g_bound = 0.0 if G_is_free[i] else float(lbG_eff[i])
+            lbg_parts.append(g_bound)
+            ubg_parts.append(g_bound)
             g_parts.append(H_expr[i])
-            lbg_parts.append(0)
+            lbg_parts.append(-_BIG if H_is_free[i] else float(lbH_eff[i]))
             ubg_parts.append(_BIG)
         else:
-            # Lower-bound active (standard NCP): G_i ≥ 0, H_i = 0
-            g_parts.append(G_expr[i])
-            lbg_parts.append(0)
-            ubg_parts.append(_BIG)
+            # Lower-H active: H_shifted_i = 0 and bounded G keeps its raw lower bound.
+            if not G_is_free[i]:
+                g_parts.append(G_expr[i])
+                lbg_parts.append(float(lbG_eff[i]))
+                ubg_parts.append(_BIG)
             g_parts.append(H_expr[i])
-            lbg_parts.append(0)
-            ubg_parts.append(0)
+            h_bound = 0.0 if H_is_free[i] else float(lbH_eff[i])
+            lbg_parts.append(h_bound)
+            ubg_parts.append(h_bound)
     
     # Optional objective cut
     if f_cut is not None:
@@ -248,7 +262,7 @@ def _build_bnlp(z_star, problem, I1, I2, I3=None, solver_opts=None, f_cut=None, 
     }
 
 
-def bnlp_polish(results, problem, solver_opts=None):
+def bnlp_polish(results, problem, solver_opts=None, eps_tol=1e-6):
     """
     Apply BNLP polishing to MPECSS results.
 
@@ -301,15 +315,16 @@ def bnlp_polish(results, problem, solver_opts=None):
     if bnlp_result['success']:
         z_polish = bnlp_result['z_polish']
         f_polish = bnlp_result['f_val']
-        comp_res_polish = complementarity_residual(z_polish, problem)
+        comp_res_polish = benchmark_feas_res(z_polish, problem)
         
         polish_details['comp_res_polish'] = comp_res_polish
         polish_details['improvement'] = f_star - f_polish
 
-        # Fix B5: Use configured eps_tol (1e-7) instead of current comp_res as tolerance
-        # The original code incorrectly used the problem's comp_res as the tolerance threshold
-        _cfg_eps_tol = 1e-7  # Standard complementarity tolerance (middle ground: 1e-6 vs 1e-8)
-        comp_ok = comp_res_polish < max(1e-06, 10 * _cfg_eps_tol)
+        # Keep BNLP acceptance anchored to the configured benchmark tolerance,
+        # while preserving the historical 1e-6 floor used in prior runs.
+        accept_tol = max(1e-6, float(eps_tol))
+        polish_details['accept_tol'] = accept_tol
+        comp_ok = comp_res_polish <= accept_tol
         
         # Accept BNLP only if BOTH complementarity is good AND objective is not worse.
         # Without the objective check, BNLP can replace Phase II's good solution with
@@ -343,7 +358,8 @@ def bnlp_polish(results, problem, solver_opts=None):
         current_f = results.get('f_final', f_star)
         current_z = results.get('z_final', z_star)
         results = _try_alternative_partitions(results, problem, current_z, current_f,
-                                              I1, I2, I_biactive, solver_opts=solver_opts)
+                                              I1, I2, I_biactive, solver_opts=solver_opts,
+                                              eps_tol=eps_tol)
 
     # Final ultra-tight polish if accepted
     if results.get('bnlp_polish', {}).get('accepted', False):
@@ -352,8 +368,9 @@ def bnlp_polish(results, problem, solver_opts=None):
         ultra_result = _build_bnlp(results['z_final'], problem, I1_final, I2_final, I3=I3_final,
                                    solver_opts=solver_opts, use_ultra_tight=True)
         if ultra_result['success']:
-            comp_ultra = complementarity_residual(ultra_result['z_polish'], problem)
-            if comp_ultra < 1e-06 and _objective_not_worse(ultra_result['f_val'], results['f_final']):
+            accept_tol = results['bnlp_polish'].get('accept_tol', max(1e-6, float(eps_tol)))
+            comp_ultra = benchmark_feas_res(ultra_result['z_polish'], problem)
+            if comp_ultra <= accept_tol and _objective_not_worse(ultra_result['f_val'], results['f_final']):
                 results['z_final'] = ultra_result['z_polish']
                 results['f_final'] = ultra_result['f_val']
                 results['comp_res'] = comp_ultra
@@ -363,7 +380,8 @@ def bnlp_polish(results, problem, solver_opts=None):
 
 
 def _try_alternative_partitions(results, problem, z_star, f_star, I1_base, I2_base,
-                                 I_biactive, solver_opts=None, max_partitions=32, time_budget=30):
+                                 I_biactive, solver_opts=None, max_partitions=32, time_budget=30,
+                                 eps_tol=1e-6):
     """
     Try alternative active-set partitions for biactive indices.
 
@@ -385,6 +403,7 @@ def _try_alternative_partitions(results, problem, z_star, f_star, I1_base, I2_ba
     best_accepted = False
     n_tried = 0
     I1_set = set(I1_base)
+    accept_tol = max(1e-6, float(eps_tol))
     
     for flip_i in I_biactive:
         if n_tried >= max_partitions:
@@ -409,8 +428,8 @@ def _try_alternative_partitions(results, problem, z_star, f_star, I1_base, I2_ba
         if not bnlp_result['success']:
             continue
         
-        comp_res = complementarity_residual(bnlp_result['z_polish'], problem)
-        if comp_res >= 1e-06:
+        comp_res = benchmark_feas_res(bnlp_result['z_polish'], problem)
+        if comp_res > accept_tol:
             continue
         if not _objective_not_worse(bnlp_result['f_val'], best_f):
             continue
@@ -423,7 +442,7 @@ def _try_alternative_partitions(results, problem, z_star, f_star, I1_base, I2_ba
     if best_accepted:
         results['z_final'] = best_z
         results['f_final'] = best_f
-        results['comp_res'] = complementarity_residual(best_z, problem)
+        results['comp_res'] = benchmark_feas_res(best_z, problem)
         results['bnlp_polish']['accepted'] = True
         results['bnlp_polish']['alt_partition_used'] = True
         results['bnlp_polish']['n_partitions_tried'] = n_tried

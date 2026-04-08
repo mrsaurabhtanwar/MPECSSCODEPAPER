@@ -75,6 +75,49 @@ def _toy_benchmark_problem():
     }
 
 
+def _toy_shifted_problem(free_g: bool = False):
+    x = ca.SX.sym("x", 1)
+    f_expr = (x[0] - 2.0) ** 2
+    f_fn = ca.Function("toy_shifted_f", [x], [f_expr])
+    G_fn = ca.Function("toy_shifted_G", [x], [ca.vertcat(x[0])])
+    H_fn = ca.Function("toy_shifted_H", [x], [ca.vertcat(x[0])])
+
+    def build_casadi(t_k: float, delta_k: float, smoothing: str = "product"):
+        x_sym = ca.SX.sym("x", 1)
+        return {
+            "x": x_sym,
+            "f": (x_sym[0] - 2.0) ** 2,
+            "g": ca.SX.zeros(0, 1),
+            "lbg": [],
+            "ubg": [],
+            "lbx": [-10.0],
+            "ubx": [10.0],
+            "n_comp": 1,
+            "n_orig_con": 0,
+        }
+
+    return {
+        "name": "toy_shifted_problem",
+        "family": "toy",
+        "n_x": 1,
+        "n_comp": 1,
+        "n_con": 0,
+        "n_p": 0,
+        "x0_fn": lambda seed=0: np.array([2.0]),
+        "build_casadi": build_casadi,
+        "f_fn": f_fn,
+        "G_fn": G_fn,
+        "H_fn": H_fn,
+        "lbx": [-10.0],
+        "ubx": [10.0],
+        "lbG_eff": [-1e20 if free_g else 0.0],
+        "lbH_eff": [2.0],
+        "G_is_free": [free_g],
+        "H_is_free": [False],
+        "_source_path": "toy_shifted.nl.json",
+    }
+
+
 def test_mpeclib_supported_nonstandard_case_builds_upper_bound_blocks() -> None:
     problem = load_mpeclib(str(MPECLIB_JSON / "aampec_1.nl.json"))
 
@@ -153,6 +196,55 @@ def test_bstat_post_check_marks_uncertified_results_unverifiable(monkeypatch) ->
     assert checked["b_stationarity"] is None
 
 
+def test_build_bnlp_respects_shifted_h_lower_bound(monkeypatch) -> None:
+    problem = _toy_shifted_problem(free_g=False)
+    captured = {}
+
+    class _FakeSolver:
+        def __call__(self, **kwargs):
+            captured["lbg"] = list(kwargs["lbg"])
+            captured["ubg"] = list(kwargs["ubg"])
+            return {"x": ca.DM([2.0]), "f": ca.DM(0.0)}
+
+        def stats(self):
+            return {"return_status": "Solve_Succeeded"}
+
+    monkeypatch.setattr(
+        "mpecss.helpers.solver_wrapper.build_universal_nlp_solver",
+        lambda *args, **kwargs: _FakeSolver(),
+    )
+
+    bnlp_module._build_bnlp(np.array([2.0]), problem, I1=[], I2=[0], I3=[])
+
+    assert captured["lbg"] == [0.0, 2.0]
+    assert captured["ubg"][0] > 1e19
+    assert captured["ubg"][1] == 2.0
+
+
+def test_build_bnlp_skips_fake_g_lower_bound_for_free_g(monkeypatch) -> None:
+    problem = _toy_shifted_problem(free_g=True)
+    captured = {}
+
+    class _FakeSolver:
+        def __call__(self, **kwargs):
+            captured["lbg"] = list(kwargs["lbg"])
+            captured["ubg"] = list(kwargs["ubg"])
+            return {"x": ca.DM([2.0]), "f": ca.DM(0.0)}
+
+        def stats(self):
+            return {"return_status": "Solve_Succeeded"}
+
+    monkeypatch.setattr(
+        "mpecss.helpers.solver_wrapper.build_universal_nlp_solver",
+        lambda *args, **kwargs: _FakeSolver(),
+    )
+
+    bnlp_module._build_bnlp(np.array([2.0]), problem, I1=[], I2=[0], I3=[])
+
+    assert captured["lbg"] == [2.0]
+    assert captured["ubg"] == [2.0]
+
+
 def test_bnlp_polish_invalidates_old_stationarity_on_accept(monkeypatch) -> None:
     monkeypatch.setattr(bnlp_module, "identify_active_set", lambda *args, **kwargs: ([0], [], [], []))
     monkeypatch.setattr(
@@ -184,6 +276,38 @@ def test_bnlp_polish_invalidates_old_stationarity_on_accept(monkeypatch) -> None
     assert polished["stationarity"] == "FAIL"
     assert polished["sign_test_pass"] is None
     assert polished["b_stationarity"] is None
+
+
+def test_bnlp_polish_acceptance_uses_benchmark_feasibility(monkeypatch) -> None:
+    monkeypatch.setattr(bnlp_module, "identify_active_set", lambda *args, **kwargs: ([0], [], [], []))
+    monkeypatch.setattr(
+        bnlp_module,
+        "_build_bnlp",
+        lambda *args, **kwargs: {
+            "z_polish": np.zeros(1),
+            "f_val": 0.5,
+            "status": "Solve_Succeeded",
+            "success": True,
+            "cpu_time": 0.01,
+        },
+    )
+    monkeypatch.setattr(bnlp_module, "benchmark_feas_res", lambda *args, **kwargs: 2e-3)
+
+    results = {
+        "z_final": np.zeros(1),
+        "f_final": 1.0,
+        "comp_res": 1e-9,
+        "stationarity": "C",
+        "status": "converged",
+        "sign_test_pass": True,
+        "b_stationarity": False,
+    }
+
+    polished = bnlp_module.bnlp_polish(results, _toy_problem(), eps_tol=1e-6)
+
+    assert polished["bnlp_polish"]["accepted"] is False
+    assert polished["f_final"] == 1.0
+    assert polished["comp_res"] == 1e-9
 
 
 def test_bnlp_polish_rejects_worse_objective(monkeypatch) -> None:
@@ -246,6 +370,7 @@ def test_run_single_problem_internal_records_raw_and_final_audit_data(monkeypatc
     toy_problem = _toy_benchmark_problem()
     audit_writes = {}
     log_exports = {}
+    phase3_eps = {}
 
     def fake_loader(_path: str):
         return toy_problem
@@ -281,7 +406,8 @@ def test_run_single_problem_internal_records_raw_and_final_audit_data(monkeypatc
             },
         }
 
-    def fake_bnlp(res, problem):
+    def fake_bnlp(res, problem, solver_opts=None, eps_tol=None):
+        phase3_eps["bnlp"] = eps_tol
         out = dict(res)
         out["z_final"] = np.array([0.25])
         out["f_final"] = 0.0
@@ -311,7 +437,8 @@ def test_run_single_problem_internal_records_raw_and_final_audit_data(monkeypatc
     def fake_lpec(res, problem):
         return dict(res, lpec_refine={"bstat_found": True, "n_outer": 1, "n_inner_total": 1, "n_bnlps": 0, "n_lpecs": 1, "improvement": 0.24, "cpu_time": 0.02})
 
-    def fake_bstat(res, problem):
+    def fake_bstat(res, problem, timeout=None, eps_tol=None):
+        phase3_eps["bstat"] = eps_tol
         out = dict(res)
         out["status"] = "converged"
         out["stationarity"] = "B"
@@ -352,6 +479,7 @@ def test_run_single_problem_internal_records_raw_and_final_audit_data(monkeypatc
     assert row["audit_iteration_log_path"] in log_exports
     assert log_exports[row["audit_iteration_log_path"]] == []
     assert row["raw_point_sha256"] != row["final_point_sha256"]
+    assert phase3_eps == {"bnlp": 1e-6, "bstat": 1e-6}
 
     audit_payload = audit_writes[row["audit_json_path"]]
     row_payload = audit_writes[row["audit_result_row_path"]]

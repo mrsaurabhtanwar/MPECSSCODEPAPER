@@ -118,6 +118,9 @@ def main() -> int:
                         help="When resuming, re-run OOM/timeout/crash problems.")
     parser.add_argument("--summary-only", action="store_true",
                         help="Print a progress summary and exit (no solving).")
+    parser.add_argument("--output-dir", type=str, default=None,
+                        help="Directory to save results. Defaults to <repo-dir>/results. "
+                             "On Kaggle, use /kaggle/working/outputs to ensure results persist.")
 
     args = parser.parse_args()
 
@@ -161,8 +164,13 @@ def main() -> int:
     }
 
     config = DATASET_CONFIG[args.dataset]
-    results_dir = os.path.join(repo_dir, "results")
+    # Use --output-dir if provided, otherwise default to <repo>/results
+    if args.output_dir:
+        results_dir = args.output_dir
+    else:
+        results_dir = os.path.join(repo_dir, "results")
     os.makedirs(results_dir, exist_ok=True)
+    print(f"[resumable] Results will be saved to: {results_dir}")
 
     # ── Summary-only mode ─────────────────────────────────────────────────
     if args.summary_only:
@@ -277,6 +285,9 @@ def main() -> int:
                             problem_list_path = local_path
                             break
         injected_args.extend(["--problem-list", problem_list_path])
+
+    # Pass output directory to ensure results go to persistent location
+    injected_args.extend(["--output-dir", results_dir])
 
     # Handle --resume-latest
     if args.resume_latest:

@@ -19,7 +19,6 @@ After replacing the complementarity constraints with their regularized counterpa
 \label{eq:nlp}
 \end{equation}
 
-\begin{remark}[Internal complementarity representation for imported benchmarks]
 The code accepts benchmark models whose native complementarity format is
 not exactly the textbook form~\eqref{eq:nlp}. For MPECLib and
 NOSBENCH, finite lower bounds on the complementarity functions are
@@ -35,7 +34,6 @@ $G$-components and upper-bound pairs of the form
 $(-G_\ell(x))(u_\ell-H_\ell(x)) \le t_k$. The notation in the sequel is
 therefore to be understood as the solver's internal complementarity
 representation after this benchmark-specific normalization.
-\end{remark}
 
 The sequence of solutions $\{\text{NLP}(t_k)\}_{k=0}^\infty$ is expected to converge to a C-stationary point of the original MPEC as $t_k \to 0$~\cite{Scholtes2001}.
 
@@ -50,17 +48,15 @@ Each subproblem $\text{NLP}(t_{k+1})$ is initialized from the solution $x^k$ of 
 
 A solution $x^k$ of $\text{NLP}(t_k)$ is accepted when the KKT conditions are satisfied to a tolerance $\varepsilon_k > 0$. In practice, $\varepsilon_k$ is reduced alongside $t_k$ (e.g., $\varepsilon_k = O(t_k)$; see~\cite{HoheiselKanzowSchwartz2013,KanzowSchwartz2015}) to ensure that the accuracy of the solutions improves as $t_k$ gets smaller.
 
-\begin{remark}
-\label{rem:remark1}
 Scholtes~\cite{Scholtes2001} proved that limit points of the regularized sequence are at best C-stationary for the MPEC. In general, C-stationarity is \emph{strictly weaker} than B-stationary
  and the standard method provides no mechanism to detect or target B-stationary points~\cite{Scholtes2001,HoheiselKanzowSchwartz2013}. Alternative relaxation formulations have been proposed that guarantee stronger stationarity under weaker
  conditions (e.g., Kanzow and Schwartz~\cite{KanzowSchwartz2013} achieve
  M-stationarity under MPEC-LICQ; DeMiguel et al.~\cite{DeMiguel2005} propose a two-sided relaxation), but their theoretical stationarity guarantees can
- fail when NLP solvers return approximate solutions~\cite{KanzowSchwartz2015}. MPECSS 
- takes a different approach: it preserves Scholtes's product relaxation which is 
- numerically robust and fills the stationarity gap by combining the regularization path 
- with an \emph{adaptive path-following strategy} guided by 
-the \emph{multiplier sign test} (Remark~\ref{rem:sign_test}). At each
+ fail when NLP solvers return approximate solutions~\cite{KanzowSchwartz2015}. MPECSS
+ takes a different approach: it preserves Scholtes's product relaxation which is
+ numerically robust and fills the stationarity gap by combining the regularization path
+ with an \emph{adaptive path-following strategy} guided by
+the \emph{multiplier sign test} (Section~\ref{sec:stationarity}). At each
 outer iteration, the sign test checks the $G$- and $H$-multipliers of
 $\text{NLP}(t_k)$ to confirm (or rule out) S-stationarity of the
 current iterate and uses this information to adjust $\{t_k\}$
@@ -72,7 +68,6 @@ are equivalent. In the implementation, however, a sign-test pass is
 carried into Phase~III, where B-stationarity is certified either by
 LICQ equivalence or by the LPEC check when LICQ is absent or
 inconclusive.
-\end{remark}
 
 \subsection{Phase~I: Feasibility}
 \label{sec:feasibility}
@@ -134,32 +129,25 @@ Algorithm~\ref{alg:phase1} summarizes the practical Phase~I procedure used to ge
 \end{algorithmic}
 \end{algorithm}
 
-\begin{remark}[Early stationarity check after Phase~I]
-\label{rem:early_check}
 When Phase~I achieves a complementarity residual $r_0 \leq 100\,
 \varepsilon_{\mathrm{tol}}$, the implementation performs an early
 stationarity evaluation before entering the Phase~II outer loop: it
 solves one NLP at a small regularization parameter
 $\bar{t} = \max(0.1\,r_0,\, 10^{-12})$ to extract multipliers and runs
-the sign test (Remark~\ref{rem:sign_test}).  Three outcomes are
-distinguished:
-\begin{itemize}
-  \setlength{\itemsep}{1pt}
-  \item If the sign test passes and $r_0 \leq \varepsilon_{\mathrm{tol}}$,
-        Phase~II is skipped and the point proceeds directly to Phase~III.
-  \item If $r_0 \leq \varepsilon_{\mathrm{tol}}$ but the sign test fails
-        and the biactive count satisfies
-        $|\mathcal{I}_{00}| \leq N_{\mathrm{LPEC}}$ (default $N_{\mathrm{LPEC}}=15$),
-        Phase~III is invoked directly since the LPEC enumeration
-        ($2^{|\mathcal{I}_{00}|}$ branches) is tractable.
-  \item Otherwise, Phase~II runs normally.
-\end{itemize}
+the sign test.  Three outcomes are distinguished:
+If the sign test passes and $r_0 \leq \varepsilon_{\mathrm{tol}}$,
+Phase~II is skipped and the point proceeds directly to Phase~III.
+If $r_0 \leq \varepsilon_{\mathrm{tol}}$ but the sign test fails
+and the biactive count satisfies
+$|\mathcal{I}_{00}| \leq N_{\mathrm{LPEC}}$ (default $N_{\mathrm{LPEC}}=15$),
+Phase~III is invoked directly since the LPEC enumeration
+($2^{|\mathcal{I}_{00}|}$ branches) is tractable.
+Otherwise, Phase~II runs normally.
 Additionally, when Phase~I produces $r_0 < t_0$, the initial
 regularization parameter is fast-forwarded to
 $t_0 \gets \max(10\,r_0,\, \varepsilon_{\mathrm{tol}}\,\tau)$ to
 preserve the refined starting point and avoid redundant outer
 iterations at large $t$ values.
-\end{remark}
 
 
 \subsection{Phase II: Adaptive Path-Following Strategy with Sign Test}
@@ -257,7 +245,7 @@ G(x)\circ H(x)-t_k
 \label{eq:stacked_constraints}
 \end{equation}
 where the tag $\mathrm{orig}$ means ``original'' and
-$g_{\mathrm{orig}}(x)$ collects the inequality-constraint block
+$g_{\mathrm{orig}}(x)$ collects the inequality constraints
 inherited from the original MPEC model (before adding regularization
 terms), $\circ$ denotes componentwise product, and $\delta_k \geq 0$
 is an optional regularization shift.\footnote{%
@@ -267,14 +255,14 @@ $\lambda^{\mathrm{cas}}$ be the solver multiplier vector associated
 with~\eqref{eq:stacked_constraints}, where the tag ``$\mathrm{cas}$''
 means multipliers returned in the CasADi/IPOPT solver convention.
 Because CasADi returns non-positive multipliers at active lower bounds
-for the $G$- and $H$-blocks, MPECSS converts these complementarity
-blocks to MPEC-oriented multipliers by negation:
+for the $G$- and $H$-constraints, MPECSS converts these complementarity
+constraints to MPEC-oriented multipliers by negation:
 \begin{equation}
 \gamma^{G,k} = -\lambda^{\mathrm{cas}}_{G},\qquad
 \gamma^{H,k} = -\lambda^{\mathrm{cas}}_{H},
 \label{eq:multiplier_conversion}
 \end{equation}
-The multiplier of the relaxed product block is still extracted and
+The multiplier of the relaxed product constraint is still extracted and
 stored for diagnostics, but it is \emph{not} part of the
 S-stationarity sign test. All sign tests in MPECSS are therefore
 performed only on the converted multipliers in
@@ -399,21 +387,19 @@ In all other cases---pathing mode is not sustained and the stagnation count is b
   \label{eq:slow}
 \end{equation}
 
-\begin{remark}
 An alternative to the implemented update is to set $t_{k+1} = r_k$
 directly, following a complementarity-residual-aware philosophy
 inspired by the theoretical sensitivities noted
 in~\cite{HoheiselKanzowSchwartz2013}. This update can converge faster
 but is slightly less robust on problems with oscillatory homotopy
 residuals. In practice, we use the adaptive rule above as the default.
-\end{remark}
 
 \subsubsection{Implementation safeguards for difficult iterations}
 In addition to the core $t$-update, the implementation includes several
 practical safeguards for difficult problems. After Phase~I, if the
 warm-start is already nearly complementarity-feasible, the code can
 short-circuit directly into Phase~III or fast-forward the initial
-$t_k$ (Remark~\ref{rem:early_check}). During Phase~II, every outer NLP
+$t_k$. During Phase~II, every outer NLP
 solve is protected by a wall-clock guard, and solver failures trigger
 the fallback chain described in
 Section~\ref{sec:solveRegNLPs} before the current iterate is abandoned.
@@ -443,30 +429,24 @@ $10^{-14}$ and the complementarity residual is numerically unchanged
 for 20~consecutive iterations (the \emph{floor stagnation window}), the
 outer loop exits early.
 
-\begin{remark}[Final-push refinement for near-miss cases]
-\label{rem:final_push}
 When Phase~II exits with $\varepsilon_{\mathrm{tol}} < r_{\mathrm{best}}
 \leq 1000\,\varepsilon_{\mathrm{tol}}$, a multi-strategy refinement
-attempts to push the complementarity residual below tolerance:
-\begin{enumerate}
-  \setlength{\itemsep}{1pt}
-  \item \emph{Gentle $t$ reduction}: solve $\mathrm{NLP}(t)$ at
-        progressively smaller $t$ values (factors $0.5$, $0.1$, $0.01$
-        of the current estimate), rejecting any solution whose iterate
-        norm diverges by more than $10\times$ from the current point.
-  \item \emph{BNLP polish}: try the BNLP~\eqref{eq:phase_i} at
-        multiple active-set tolerances; accept only if it improves
-        $r_{\mathrm{comp}}$.
-  \item \emph{Partition flipping}: for each biactive index, flip the
-        active-set assignment $G_\ell = 0 \leftrightarrow H_\ell = 0$
-        and re-solve the BNLP to find a feasible partition.
-\end{enumerate}
+attempts to push the complementarity residual below tolerance.
+\emph{Gentle $t$ reduction} solves $\mathrm{NLP}(t)$ at
+progressively smaller $t$ values (factors $0.5$, $0.1$, $0.01$
+of the current estimate), rejecting any solution whose iterate
+norm diverges by more than $10\times$ from the current point.
+\emph{BNLP polish} tries the BNLP~\eqref{eq:phase_i} at
+multiple active-set tolerances; accept only if it improves
+$r_{\mathrm{comp}}$.
+\emph{Partition flipping} flips, for each biactive index, the
+active-set assignment $G_\ell = 0 \leftrightarrow H_\ell = 0$
+and re-solves the BNLP to find a feasible partition.
 If all strategies fail but $r_{\mathrm{best}} \leq 10\,
 \varepsilon_{\mathrm{tol}}$, the point is accepted under a relaxed
 tolerance and classified as C-stationary.  This three-strategy cascade
 recovers problems whose homotopy residual is only slightly above the
 target tolerance.
-\end{remark}
 
 
 \subsubsection{Restoration phase}
@@ -544,9 +524,7 @@ Algorithm~\ref{alg:phase2-restoration} gives the restoration workflow used when 
 \end{algorithmic}
 \end{algorithm}
 
-\begin{remark}
 The restoration phase is a practical method that does not change the theoretical convergence guarantees of Scholtes's regularization (Theorem~\ref{thm:scholtes}). When recovery succeeds, the algorithm follows a regularization path toward a stronger stationarity point. When it fails, the algorithm returns to the standard parameter reduction, still ensuring convergence to at least a C-stationary point under MPEC-LICQ.
-\end{remark}
 
 
 \subsection{Phase III: B-Stationarity Certification}
@@ -582,21 +560,22 @@ refinement sequence.
 \end{algorithmic}
 \end{algorithm}
 
-\begin{enumerate}
-  \item \textbf{Direct certification under sign test plus MPEC-LICQ:} If the final iterate passes the multiplier sign test and MPEC-LICQ holds at that point, then the implementation certifies B-stationarity by the equivalence between S- and B-stationarity under MPEC-LICQ.
-  \item \textbf{BNLP polishing:} Even a good solution can be numerically rough. We solve a final simplified problem (BNLP) by fixing an active-set partition. Given index sets $\mathcal{I}_1 = \{\ell : G_\ell(x^*) \approx 0\}$ and $\mathcal{I}_2 = \{\ell : H_\ell(x^*) \approx 0\}$, the BNLP subproblem is:
-  \begin{equation}
-  \begin{aligned}
-    \text{BNLP}(x^*,\mathcal{I}_1,\mathcal{I}_2): \quad & \min_{x \in \mathbb{R}^n} \; f(x) \\
-    & \text{s.t.} \quad g(x) \leq 0, \; h(x) = 0, \\
-    & \quad\; G_\ell(x) = 0 \; (\ell \in \mathcal{I}_1), \; H_\ell(x) \geq 0 \; (\ell \in \mathcal{I}_1), \\
-    & \quad\; H_\ell(x) = 0 \; (\ell \in \mathcal{I}_2), \; G_\ell(x) \geq 0 \; (\ell \in \mathcal{I}_2).
-  \end{aligned}
-  \label{eq:bnlp}
-  \end{equation}
-  For biactive indices ($\ell \in \mathcal{I}_{00}$), either $G_\ell$ or $H_\ell$ must be assigned to the equality branch; the implementation first uses the primary partition and then tries limited single-flip alternatives. A polished point is accepted only if its complementarity residual remains below the implementation threshold (effectively $10^{-6}$ in the released code) and its objective value does not worsen by more than a small relative/absolute tolerance.
-  \item \textbf{LPEC-based certification and refinement:} If sign test plus LICQ do not already certify the point, we use the geometric LPEC check to determine whether a feasible descent direction exists~\cite{LuoPangRalph1996,FletcherLeyfferRalphScholtes2006}. Because the biactive complementarity constraints require $\nabla G_\ell(x^*)^\top d \geq 0$ \emph{and} $\nabla G_\ell(x^*)^\top d \cdot \nabla H_\ell(x^*)^\top d = 0$ for each $\ell \in \mathcal{I}_{00}$, the implementation enumerates all $2^{|\mathcal{I}_{00}|}$ XOR branches (either $G_\ell$ stays active or $H_\ell$ stays active per biactive index), capped at $2^{15}$ branches for tractability, and solves the resulting LPs with SciPy's \texttt{linprog(..., method='highs')} backend~\cite{HuangfuHall2018}. In benchmark mode, this certification is followed by a trust-region refinement loop with parameters $\rho_{\mathrm{init}} = 10^{-3}$, $\gamma_L = 0.1$, $N_{\mathrm{out}} = 30$, $N_{\mathrm{in}} = 15$, $tol_B = 10^{-10}$, and $tol_{\mathrm{comp}} = 10^{-8}$.
-\end{enumerate}
+\emph{Direct certification under sign test plus MPEC-LICQ:} If the final iterate passes the multiplier sign test and MPEC-LICQ holds at that point, then the implementation certifies B-stationarity by the equivalence between S- and B-stationarity under MPEC-LICQ.
+
+\emph{BNLP polishing:} Even a good solution can be numerically rough. We solve a final simplified problem (BNLP) by fixing an active-set partition. Given index sets $\mathcal{I}_1 = \{\ell : G_\ell(x^*) \approx 0\}$ and $\mathcal{I}_2 = \{\ell : H_\ell(x^*) \approx 0\}$, the BNLP subproblem is:
+\begin{equation}
+\begin{aligned}
+  \text{BNLP}(x^*,\mathcal{I}_1,\mathcal{I}_2): \quad & \min_{x \in \mathbb{R}^n} \; f(x) \\
+  & \text{s.t.} \quad g(x) \leq 0, \; h(x) = 0, \\
+  & \quad\; G_\ell(x) = 0 \; (\ell \in \mathcal{I}_1), \; H_\ell(x) \geq 0 \; (\ell \in \mathcal{I}_1), \\
+  & \quad\; H_\ell(x) = 0 \; (\ell \in \mathcal{I}_2), \; G_\ell(x) \geq 0 \; (\ell \in \mathcal{I}_2).
+\end{aligned}
+\label{eq:bnlp}
+\end{equation}
+For biactive indices ($\ell \in \mathcal{I}_{00}$), either $G_\ell$ or $H_\ell$ must be assigned to the equality branch; the implementation first uses the primary partition and then tries limited single-flip alternatives. A polished point is accepted only if its complementarity residual remains below the implementation threshold (effectively $10^{-6}$ in the released code) and its objective value does not worsen by more than a small relative/absolute tolerance.
+
+\emph{LPEC-based certification and refinement:} If sign test plus LICQ do not already certify the point, we use the geometric LPEC check to determine whether a feasible descent direction exists~\cite{LuoPangRalph1996,FletcherLeyfferRalphScholtes2006}. Because the biactive complementarity constraints require $\nabla G_\ell(x^*)^\top d \geq 0$ \emph{and} $\nabla G_\ell(x^*)^\top d \cdot \nabla H_\ell(x^*)^\top d = 0$ for each $\ell \in \mathcal{I}_{00}$, the implementation enumerates all $2^{|\mathcal{I}_{00}|}$ XOR branches (either $G_\ell$ stays active or $H_\ell$ stays active per biactive index), capped at $2^{15}$ branches for tractability, and solves the resulting LPs with SciPy's \texttt{linprog(..., method='highs')} backend~\cite{HuangfuHall2018}. In benchmark mode, this certification is followed by a trust-region refinement loop with parameters $\rho_{\mathrm{init}} = 10^{-3}$, $\gamma_L = 0.1$, $N_{\mathrm{out}} = 30$, $N_{\mathrm{in}} = 15$, $tol_B = 10^{-10}$, and $tol_{\mathrm{comp}} = 10^{-8}$.
+
 In the reported experiments, every problem is post-processed by the full
 benchmark pipeline: the Phase~II output is passed through BNLP
 polishing, LPEC refinement, and a final B-stationarity post-check,

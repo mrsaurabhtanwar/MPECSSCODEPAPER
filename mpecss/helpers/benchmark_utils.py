@@ -1416,8 +1416,16 @@ def run_single_problem_internal(
     return row
 
 
-def run_benchmark_main(loader_fn: Callable[[str], Dict[str, Any]], dataset_tag: str, default_path: str):
-    """Entry point for the three main benchmark runner scripts."""
+def run_benchmark_main(loader_fn: Callable[[str], Dict[str, Any]], dataset_tag: str, default_path: str, results_dir_override: str = None):
+    """Entry point for the three main benchmark runner scripts.
+
+    Args:
+        loader_fn: Function to load problem data from JSON file path
+        dataset_tag: Name of the benchmark dataset (e.g., 'nosbench', 'mpeclib')
+        default_path: Default path to benchmark JSON directory
+        results_dir_override: Optional override for results directory (e.g., '/kaggle/working/outputs').
+                              If None, uses --output-dir argument or defaults to './results'.
+    """
     # Setup logging
     logging.basicConfig(
         level=logging.INFO,
@@ -1458,6 +1466,9 @@ def run_benchmark_main(loader_fn: Callable[[str], Dict[str, Any]], dataset_tag: 
                         help="Limit to first N problems (useful for quick official test runs, e.g., --num-problems 10)")
     parser.add_argument("--resume",       type=str,   help="Path to existing CSV results to resume from")
     parser.add_argument("--retry-failed", action="store_true", help="When resuming, ignore past OOM/timeout/crash results and re-run them")
+    parser.add_argument("--output-dir",   type=str,   default=None,
+                        help="Directory to save results (default: ./results). "
+                             "On Kaggle, use /kaggle/working/outputs to ensure results persist.")
     args = parser.parse_args()
 
     # Normalise timeout: treat 0 as None (no limit)
@@ -1470,8 +1481,15 @@ def run_benchmark_main(loader_fn: Callable[[str], Dict[str, Any]], dataset_tag: 
     os.environ["OPENBLAS_NUM_THREADS"] = "1"
     os.environ["NUMEXPR_NUM_THREADS"] = "1"
 
-    results_dir = os.path.abspath("results")
+    # Determine results directory: override > CLI arg > default
+    if results_dir_override:
+        results_dir = os.path.abspath(results_dir_override)
+    elif args.output_dir:
+        results_dir = os.path.abspath(args.output_dir)
+    else:
+        results_dir = os.path.abspath("results")
     os.makedirs(results_dir, exist_ok=True)
+    logger.info(f"Results will be saved to: {results_dir}")
 
     if not os.path.isdir(args.path):
         logger.error(f"Benchmark path not found: {args.path}")

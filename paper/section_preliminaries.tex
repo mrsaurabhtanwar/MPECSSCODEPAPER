@@ -119,16 +119,13 @@ The vanishing of $\gamma^G_\ell$ for $\ell \notin \mathcal{I}_G$ and of
 $\gamma^H_\ell$ for $\ell \notin \mathcal{I}_H$ follows from
 complementary slackness.
 
-\begin{definition}[MPEC stationarity concepts \cite{ScheelScholtes2000,Ye2005,FlegelKanzow2005}]\label{def:mpec_stationarity}
-A feasible point $x^*$ is called:
-\begin{itemize}
-    \setlength{\itemsep}{1pt}
-    \item[--] \emph{W-stationarity}: if there exist multipliers satisfying \eqref{eq:stationarity_system} with no further sign restrictions on $\gamma^G_\ell, \gamma^H_\ell$ for $\ell \in \mathcal{I}_{00}(x^*)$.
-    \item[--] \emph{C-stationarity}: if it is W-stationary and $\gamma^G_\ell \cdot \gamma^H_\ell \geq 0$ for all $\ell \in \mathcal{I}_{00}(x^*)$.
-    \item[--] \emph{M-stationarity}: if it is W-stationary and for each $\ell \in \mathcal{I}_{00}(x^*)$, either ($\gamma^G_\ell > 0, \gamma^H_\ell > 0$) or $\gamma^G_\ell \cdot \gamma^H_\ell = 0$ \cite{Ye2005,FlegelKanzow2005}.
-    \item[--] \emph{S-stationarity}: if it is W-stationary and $\gamma^G_\ell \geq 0, \gamma^H_\ell \geq 0$ for all $\ell \in \mathcal{I}_{00}(x^*)$.
-    \item[--] \emph{B-stationarity} \cite{LuoPangRalph1996,ScheelScholtes2000}: if $\nabla f(x^*)^\top d \geq 0$ for all $d \in T_{\mathcal{F}}(x^*)$, where the \emph{Bouligand tangent cone} is $T_{\mathcal{F}}(x^*) = \{d \in \mathbb{R}^n : \exists x^k \in \mathcal{F}, x^k \to x^*, t_k \downarrow 0 \text{ s.t. } \frac{x^k - x^*}{t_k} \to d\}$.
-\end{itemize}
+\begin{definition}[MPEC stationarity concepts \cite{ScheelScholtes2000,LuoPangRalph1996,Ye2005,FlegelKanzow2005}]\label{def:mpec_stationarity}
+A feasible point $x^*$ is called
+\emph{W-stationary} if there exist multipliers satisfying \eqref{eq:stationarity_system} with no further sign restrictions on $\gamma^G_\ell, \gamma^H_\ell$ for $\ell \in \mathcal{I}_{00}(x^*)$;
+\emph{C-stationary} if it is W-stationary and $\gamma^G_\ell \cdot \gamma^H_\ell \geq 0$ for all $\ell \in \mathcal{I}_{00}(x^*)$;
+\emph{M-stationary} if it is W-stationary and for each $\ell \in \mathcal{I}_{00}(x^*)$, either ($\gamma^G_\ell > 0, \gamma^H_\ell > 0$) or $\gamma^G_\ell \cdot \gamma^H_\ell = 0$;
+\emph{S-stationary} if it is W-stationary and $\gamma^G_\ell \geq 0, \gamma^H_\ell \geq 0$ for all $\ell \in \mathcal{I}_{00}(x^*)$;
+\emph{B-stationary} if $\nabla f(x^*)^\top d \geq 0$ for all $d \in T_{\mathcal{F}}(x^*)$, where the \emph{Bouligand tangent cone} is $T_{\mathcal{F}}(x^*) = \{d \in \mathbb{R}^n : \exists x^k \in \mathcal{F}, x^k \to x^*, t_k \downarrow 0 \text{ s.t. } \frac{x^k - x^*}{t_k} \to d\}$.
 \end{definition}
 
 The strict hierarchy among multiplier-based notions is established in~\citep{ScheelScholtes2000,Ye2005,FlegelKanzow2005}:
@@ -138,8 +135,6 @@ The strict hierarchy among multiplier-based notions is established in~\citep{Sch
 \end{equation}
 Moreover, Scheel and Scholtes~\citep{ScheelScholtes2000} show that S-stationarity implies B-stationarity (a geometric concept based on the tangent cone) without requiring constraint qualifications. Under MPEC-LICQ, the converse holds and the two are equivalent (B-stationary $\Leftrightarrow$ S-stationary).
 
-\begin{remark}
-\label{rem:sign_test}
 By Definition~\ref{def:mpec_stationarity}, S-stationarity at $x^*$ reduces to
 verifying the gradient condition~\eqref{eq:stationarity_system} together
 with the sign conditions $\gamma^G_\ell \geq 0$ and
@@ -153,7 +148,6 @@ is reported only after the Phase~III certification logic checks
 MPEC-LICQ or, if necessary, solves the LPEC verification problem. A
 complete description of how this test is integrated into the MPECSS
 algorithm is given in Section~\ref{sec:algorithm}.
-\end{remark}
 
 
 % -------------------------------------------------------------------------

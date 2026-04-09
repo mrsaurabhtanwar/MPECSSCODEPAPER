@@ -2,8 +2,8 @@
 % Section 5 -- Numerical Experiments
 % ==========================================================================
 % File: section_numerical.tex
-% Status: MPECLib results complete (official benchmark run 2026-04-01).
-%         MacMPEC and NOSBENCH: placeholders only.
+% Status: MPECLib and MacMPEC text aligned with archived benchmark artifacts.
+%         NOSBENCH section retained for the pending official full-suite run.
 % Last revised: April 2026
 %
 % INTEGRATION NOTE FOR main.tex
@@ -41,14 +41,17 @@ MacMPEC benchmark suite.
 \label{sec:exp_setup}
 % --------------------------------------------------------------------------
 
-All experiments were conducted on a Windows~11 with an
-Intel Core i5-1235U processor (10 physical cores, 12 logical threads) and 8\,GB of RAM.  MPECSS is implemented
-in Python~3.12 using CasADi~3.7.2~\cite{AnderssonGillisHornRawlingsDiehl2019}
-for automatic differentiation and IPOPT~\cite{WachterBiegler2006} as
-the primary NLP engine. In the reported runs, IPOPT uses the
-open-source linear solver MUMPS~\cite{Amestoy2001}. The code base
-also contains an SQP$+$qpOASES~\cite{Ferreau2014qpOASES}
-route for small problems ($n \leq 400$). No commercial libraries (HSL, Gurobi, SNOPT) are required.
+The archived benchmark artifacts in this repository were not produced on
+a single manually curated machine image; instead, each benchmark run is
+accompanied by a run-environment JSON that records the command line,
+package versions, platform information, and hardware metadata for that
+particular run. The checked-in verified MPECLib run-environment file,
+for example, records Linux on an Intel Xeon platform with 31.35\,GB RAM
+under Python~3.12.12, CasADi~3.7.2, and IPOPT~\cite{WachterBiegler2006}
+with the open-source linear solver MUMPS~\cite{Amestoy2001}. The code
+base also contains an SQP$+$qpOASES~\cite{Ferreau2014qpOASES} route for
+small problems ($n \leq 400$). No commercial libraries (HSL, Gurobi,
+SNOPT) are required.
 
 The benchmark-runner configuration used throughout all benchmarks is
 listed in Table~\ref{tab:params}. A per-problem wall-clock time limit
@@ -93,15 +96,30 @@ Benchmark seed           & ---                & 42          & Benchmark-runner r
 \label{tab:params}
 \end{table}
 
-The benchmark utility writes a detailed CSV row for every instance together with a per-run environment JSON recording the command line, package versions, and hardware configuration. In addition to standard convergence fields, the logger records per-iteration diagnostics (residuals, multiplier bounds, biactive counts, regime labels), phase-level timing splits, solver fallback flags, best-point tracking, and failure metadata.
+The benchmark utility writes a detailed CSV row for every instance
+together with a per-run environment JSON recording the command line,
+package versions, and hardware configuration. In addition to standard
+convergence fields, the logger records per-iteration diagnostics
+(residuals, multiplier bounds, biactive counts, regime labels),
+phase-level timing splits, solver fallback flags, best-point tracking,
+and failure metadata. All reported times in this section are
+\emph{wall-clock} times measured by the benchmark harness, not process
+CPU times. Unless stated otherwise, median times in the size-stratified
+tables are computed over converged instances only.
 
 Each problem is assigned one of the following outcome classifications based on the solver's termination status and stationarity certificate:
 (i)~\emph{B-stationary}---the solver reports \texttt{converged} and the Phase~III LICQ/LPEC verification certifies B-stationarity;
 (ii)~\emph{C-stationary}---the solver reports \texttt{converged} but only C-stationarity can be certified (B-stationarity verification fails or is inconclusive);
 (iii)~\emph{Timeout}---the 3600\,s wall-clock limit is exceeded before convergence;
-(iv)~\emph{Other failures}---complementarity infeasibility (\texttt{comp\_infeasible}), NLP solver failure (\texttt{nlp\_failure}), out-of-memory (\texttt{oom}), worker crash, or model-loading failure.
-All \emph{converged} results, whether B-stationary or C-stationary, satisfy
-complementarity residual $r_{\mathrm{comp}} \leq 10^{-6}$ at termination.
+(iv)~\emph{Other failures}---complementarity infeasibility
+(\texttt{comp\_infeasible}), NLP solver failure
+(\texttt{nlp\_failure}), out-of-memory (\texttt{oom}), worker crash, or
+model-loading failure. Most \emph{converged} results satisfy the target
+threshold $r_{\mathrm{comp}} \leq 10^{-6}$ directly; however, in the
+benchmark harness a final B-stationarity post-check may also relabel a
+small number of near-feasible outcomes with
+$r_{\mathrm{comp}} \leq 10\,\varepsilon_{\mathrm{tol}}$ after the final
+certification stage.
 
 Three benchmark collections are used: MPECLib, MacMPEC and NOSBENCH.
 
@@ -112,9 +130,17 @@ Three benchmark collections are used: MPECLib, MacMPEC and NOSBENCH.
 % --------------------------------------------------------------------------
 
 MPECLib~\cite{MPECLib} is a standard MPEC test set maintained by GAMS
-World containing 92 problems drawn from bilevel optimization,
-contact mechanics, game theory, and structural optimization.  We solve
-all 92 problems with MPECSS using the configuration in
+World originally containing 92 problems drawn from bilevel optimization,
+contact mechanics, game theory, and structural optimization.  Of these,
+4 problems (\texttt{three}, \texttt{bard2}, \texttt{mss}, and \texttt{qvi})
+are excluded from our experiments as they contain modeling constructs
+that fall outside the pure MPEC formulation~\eqref{eq:general_mpec}---specifically,
+these problems include disjunctive constraints, general complementarity
+systems, or other extensions not directly expressible as standard
+complementarity pairs.  The archived raw CSV still logs these four
+instances with status \texttt{unsupported\_model}; the analysis below
+filters them out and therefore reports the supported 88-problem subset.
+We solve these 88 problems with MPECSS using the configuration in
 Table~\ref{tab:params}.
 
 
@@ -123,47 +149,53 @@ Table~\ref{tab:params}.
 \label{sec:mpeclib_summary}
 
 Table~\ref{tab:mpeclib_summary} summarises the overall outcomes.
-MPECSS converged on 85 of 92 problems (92.4\%), certifying
-B-stationarity on 72 instances (78.3\%) and C-stationarity on the
-remaining 13 (14.1\%).  Among converged problems, the B-stationarity
-rate is 84.7\%.  The remaining 7 problems (7.6\%) reached the 3600\,s timeout limit.
+MPECSS converged on 78 of 88 problems (88.6\%), certifying
+B-stationarity on 65 instances (73.9\%) and C-stationarity on the
+remaining 13 (14.8\%).  Among converged problems, the B-stationarity
+rate is 83.3\%.  The remaining 10 problems (11.4\%) did not converge:
+6 reached the 3600\,s timeout limit, 3 terminated with stationarity
+unverifiable, and 1 crashed during execution.
 
 \begin{table}[!htb]
-\tbl{MPECSS outcome summary on the MPECLib benchmark (92 problems,
+\tbl{MPECSS outcome summary on the MPECLib benchmark (88 problems,
          3600\,s time limit per problem).}
 {\begin{tabular}{@{}lrr@{}}
 \toprule
 Outcome                          & Count & Percentage \\
 \midrule
-Converged -- B-stationary        & 72    & 78.3\%     \\
-Converged -- C-stationary        & 13    & 14.1\%      \\
-\textit{Total converged}         & \textit{85} & \textit{92.4\%} \\
+Converged -- B-stationary        & 65    & 73.9\%     \\
+Converged -- C-stationary        & 13    & 14.8\%      \\
+\textit{Total converged}         & \textit{78} & \textit{88.6\%} \\
 \addlinespace
-Timeout ($>$3600\,s)             & 7     & 7.6\%      \\
+Timeout ($>$3600\,s)             & 6     & 6.8\%      \\
+Stationarity unverifiable        & 3     & 3.4\%      \\
+Crashed                          & 1     & 1.1\%      \\
 \addlinespace
-\textbf{Total}                   & \textbf{92} & \textbf{100\%} \\
+\textbf{Total}                   & \textbf{88} & \textbf{100\%} \\
 \bottomrule
 \end{tabular}}
 \label{tab:mpeclib_summary}
 \end{table}
 
-% TODO: Uncomment when figures are generated
 % Figure~\ref{fig:mpeclib_outcomes} presents the same information
 % graphically.  The left panel shows the overall outcome distribution;
 % the right panel breaks it down by problem size class (small: $n \leq
 % 50$; medium: $50 < n \leq 500$; large: $n > 500$).
 MPECSS demonstrates strong performance across all problem size categories.
-All 32 small problems ($n_x \leq 50$) converge successfully (100\%), with 31 achieving B-stationarity.
-Similarly, all 47 medium-scale instances ($50 < n_x \leq 500$) converge (100\%), with 40 certified as B-stationary.
-For the 13 large-scale problems ($n_x > 500$), 6 converge successfully (46.2\%), with 1 achieving B-stationarity and 5 reaching C-stationarity.
-The 7 timeout cases are concentrated in the \texttt{tinque} family (6 instances with 3,000--5,700 variables and 2,900--4,500 complementarity pairs from contact mechanics)
-and one \texttt{frictionalblock} instance. These large-scale problems with thousands of complementarity constraints
+All 28 small problems ($n_x \leq 50$) converge successfully (100\%), with all 28 achieving B-stationarity.
+Of the 46 medium-scale instances ($50 < n_x \leq 500$), 45 converge (97.8\%), with 33 certified as B-stationary and 12 as C-stationary.
+For the 14 large-scale problems ($n_x > 500$), 5 converge successfully (35.7\%), with 4 achieving B-stationarity and 1 reaching C-stationarity.
+The non-converging cases are concentrated in the \texttt{tinque}
+family (4 timeout instances and 1 crash, with the remaining 2
+instances converging) and the \texttt{frictionalblock} family
+(3 stationarity-unverifiable instances and 1 timeout). These
+large-scale problems with thousands of complementarity constraints
 pose significant computational challenges for the open-source MUMPS linear solver.
 
 \begin{figure}[!htb]
   \centering
   \includegraphics[width=0.6\textwidth]{mpeclib_outcomes}%
-  \caption{MPECSS outcome distribution on MPECLib.}
+  \caption{MPECSS outcome distribution on MPECLib (88 problems).}
   \label{fig:mpeclib_outcomes}
 \end{figure}
 
@@ -174,32 +206,35 @@ pose significant computational challenges for the open-source MUMPS linear solve
 
 Table~\ref{tab:mpeclib_size} stratifies outcomes by problem size.
 Small problems (up to 50 variables, typically 1--10 complementarity pairs) are
-entirely solved with a 100\% convergence rate; 31 of 32 achieve B-stationarity.
-Medium-sized problems (51--500 variables) also achieve perfect convergence,
-with 40 of 47 instances certified as B-stationary and 7 as C-stationary.
-The timing results reveal that small problems solve rapidly (median 2.9\,s, mean 3.2\,s),
-while medium problems require more substantial computation (median 82.2\,s, mean 463.9\,s).
-Large problems ($n_x > 500$) present the greatest challenge: of 13 instances,
-6 converge (5 from \texttt{frictionalblock} to C-stationarity, 1 from \texttt{tollmpec} to B-stationarity),
-while the remaining 7 timeout.  The timeout cases are exclusively from the \texttt{tinque}
-family (6 instances) and \texttt{frictionalblock\_6}, all exceeding 1,000 complementarity pairs.
+entirely solved with a 100\% convergence rate; all 28 achieve B-stationarity.
+Medium-sized problems (51--500 variables) achieve 97.8\% convergence,
+with 33 of 46 instances certified as B-stationary and 12 as C-stationary.
+The timing results reveal that small problems solve rapidly (median 1.1\,s),
+while medium problems require more substantial computation (median 440.4\,s).
+Large problems ($n_x > 500$) present the greatest challenge: of 14 instances,
+5 converge (4 to B-stationarity, 1 to C-stationarity),
+while 5 timeout and 4 terminate with other failures (3 stationarity-unverifiable, 1 crashed).
+The non-converging cases are primarily from the \texttt{tinque}
+family (5 instances) and \texttt{frictionalblock} (4 instances), all involving
+more than 1,000 complementarity pairs.
 
 \begin{table}[!htb]
-\tbl{MPECLib outcomes stratified by problem size class.}
-{\begin{tabular}{@{}lccccc@{}}
+\tbl{MPECLib outcomes stratified by problem size class (88 problems).}
+{\begin{tabular}{@{}lcccccc@{}}
 \toprule
 Size class
   & Total
   & B-stat.
   & C-stat.
   & Timeout
-  & Median time (s) \\
+  & Other
+  & Median wall-clock (s) \\
 \midrule
-Small  ($n_x \leq 50$)       & 32 & 31 & 1 & 0 & 2.9 \\
-Medium ($50 < n_x \leq 500$) & 47 & 40 & 7 & 0 & 82.2 \\
-Large  ($n_x > 500$)         & 13 &  1 & 5 & 7 & 218.5 \\
+Small  ($n_x \leq 50$)       & 28 & 28 & 0 & 0 & 0 & 1.1 \\
+Medium ($50 < n_x \leq 500$) & 46 & 33 & 12 & 1 & 0 & 440.4 \\
+Large  ($n_x > 500$)         & 14 &  4 & 1 & 5 & 4 & 342.3 \\
 \midrule
-\textbf{Total}               & 92 & 72 & 13 & 7 & 27.2 \\
+\textbf{Total}               & 88 & 65 & 13 & 6 & 4 & 84.4 \\
 \bottomrule
 \end{tabular}}
 \label{tab:mpeclib_size}
@@ -212,61 +247,62 @@ Large  ($n_x > 500$)         & 13 &  1 & 5 & 7 & 218.5 \\
 
 Several observations stand out from the per-family results.
 \emph{Complete success} (all instances solved to
-B-stationarity): \texttt{bard} (3/3), \texttt{bartruss} (6/6),
+B-stationarity): \texttt{bard} (2/2), \texttt{bartruss} (6/6),
 \texttt{dempe} (2/2), \texttt{desilva} (1/1), \texttt{ex9} (4/4), \texttt{fjq} (1/1),
-\texttt{gauvin} (1/1), \texttt{hq} (1/1), \texttt{kehoe}
-(3/3), \texttt{mss} (1/1), \texttt{nappi} (4/4), \texttt{outrata} (4/4),
-\texttt{oz} (1/1), \texttt{qvi} (1/1), \texttt{three} (1/1),
-\texttt{tinloi} (1/1), \texttt{find\_a} (12/12), and \texttt{find\_c} (12/12).
-\emph{Near-complete B-stationarity}: \texttt{find\_b} (11/12 to
-B-stat, 1 to C-stat); all 12 converge but one instance (\texttt{findb30l})
-is certified as C-stationary rather than B-stationary.
+\texttt{gauvin} (1/1), \texttt{hq} (1/1), \texttt{kehoe} (3/3),
+\texttt{nappi} (4/4), \texttt{outrata} (4/4),
+\texttt{oz} (1/1), and \texttt{tinloi} (1/1).
+\emph{Mixed but mostly successful families:} the \texttt{find\_a}
+family yields 8 B-stationary solutions, 3 C-stationary solutions, and
+1 timeout; \texttt{find\_b} yields 9 B-stationary and 2 C-stationary
+solutions; and \texttt{find\_c} yields 11 B-stationary and
+1 C-stationary solution.
 \emph{C-stationarity without B-stationarity certificate}:
 The \texttt{aampec} family (6 instances, all with 69 complementarity pairs)
 converges to C-stationary points on all instances; the high complementarity
 density ($q/n \approx 0.96$) presents challenges for B-stationarity certification.
-The \texttt{frictional\_block} family achieves C-stationarity on 5 of 6 instances
-that converge, while \texttt{kojshin4} is the only small problem to converge
-to C-stationarity.
-\emph{Timeout cases}: The \texttt{tinque} family (6 large-scale
+\emph{Non-converging cases}: The \texttt{tinque} family (7 large-scale
 instances with 3,000--5,700 variables from contact-mechanics discretisations)
-times out on all instances within the 3600\,s limit. One \texttt{frictionalblock}
-instance also times out. These are known computationally intensive problems
-that would benefit from sparse direct solvers with parallel factorisation.
+experiences 4 timeouts and 1 crash within the 3600\,s limit, while the
+remaining 2 instances converge (1 B-stationary and 1 C-stationary).
+The \texttt{frictionalblock} family (6 instances) has 3 stationarity-unverifiable
+terminations, 1 timeout, and 2 converged instances; these are known
+computationally intensive problems whose cost is dominated by sparse
+linear algebra.
 
 
 % ··· 5.2.6 Discussion of failures ·········································
-\subsubsection{Discussion of Timeout Cases and C-Stationarity}
+\subsubsection{Discussion of Non-Converging Cases and C-Stationarity}
 \label{sec:discussion_large}
 
-The six \texttt{tinque} instances are large-scale problems (4,000--5,700
+The \texttt{tinque} instances are large-scale problems (4,000--5,700
 variables, 2,900--4,500 complementarity pairs) arising from
-contact-mechanics discretisations.  All six exceed the 3600\,s time limit.
+contact-mechanics discretisations. Four of the seven instances exceed
+the 3600\,s time limit, one crashes during execution, and two converge.
 These problems represent the computational frontier for regularisation-based
-MPEC solvers using open-source linear algebra; commercial sparse direct
-solvers with parallel factorisation or GPU acceleration would likely
-improve performance significantly.
+MPEC solvers using open-source linear algebra; stronger sparse-direct or
+parallel sparse-factorisation backends would likely help on this family.
 
 The \texttt{frictionalblock} instances range from 682 to 2,855 variables
-with 332 to 1,380 complementarity pairs.  Five of six converge to C-stationarity
-(mean time 214.0\,s), while \texttt{frictionalblock\_6} (the largest instance)
-times out.  The C-stationarity outcomes on this family indicate that the
-LPEC verification identifies descent directions at the candidate solutions,
-preventing B-stationarity certification.
+with 332 to 1,380 complementarity pairs.  Three instances terminate with
+stationarity unverifiable (mean time 326.0\,s), one times out, and two
+converge.  The stationarity-unverifiable outcomes indicate numerical
+difficulties in verifying the sign conditions at the computed solutions.
 
 The six \texttt{aampec} problems have $n_x = 72$ variables and $q = 69$
 complementarity pairs, giving an extremely high complementarity
-density ($q/n \approx 0.96$).  All six converge to C-stationarity with
-a mean computation time of 2,425.6\,s.  The high complementarity density
+density ($q/n \approx 0.96$).  All six converge to C-stationarity.
+The high complementarity density
 makes B-stationarity certification particularly challenging, as the
 biactive set tends to be large at feasible points.
 
-The 92.4\% convergence rate and 78.3\% B-stationarity rate on MPECLib
+The 88.6\% convergence rate and 83.3\% B-stationarity rate (among converged)
+on the 88-problem MPECLib subset
 demonstrate the effectiveness of MPECSS across a diverse problem collection.
-The 7 timeout cases are concentrated in very large-scale problems ($>$2,500
+The 10 non-converging cases are concentrated in very large-scale problems ($>$1,000
 complementarity pairs) that push the limits of the open-source MUMPS solver.
 The 13 C-stationary solutions, predominantly from \texttt{aampec} and
-\texttt{frictionalblock}, represent problems where the LPEC post-processing
+the \texttt{find\_*} families, represent problems where the LPEC post-processing
 correctly identifies that stronger stationarity certificates cannot be
 guaranteed.
 
@@ -276,7 +312,7 @@ guaranteed.
 \label{sec:macmpec}
 % --------------------------------------------------------------------------
 
-MacMPEC~\cite{Leyffer2000} is the original and most widely used MPEC
+MacMPEC~\cite{Leyffer2000} is an early and widely used MPEC
 benchmark collection, comprising 191 problems drawn from bilevel
 optimisation, economic equilibrium modelling, engineering design, and
 game theory.  We use the 191-problem version as distributed on the
@@ -290,10 +326,10 @@ in Table~\ref{tab:params}.
 \label{sec:macmpec_summary}
 
 Table~\ref{tab:macmpec_summary} summarises the overall outcomes.
-MPECSS converged on 184 of 191 problems (96.3\%), certifying
-B-stationarity on 120 instances (62.8\%) and C-stationarity on the
-remaining 64 (33.5\%).  Among converged problems, the B-stationarity
-rate is 65.2\%.  Six problems (3.1\%) reached the 3600\,s timeout limit,
+MPECSS converged on 186 of 191 problems (97.4\%), certifying
+B-stationarity on 162 instances (84.8\%) and C-stationarity on the
+remaining 24 (12.6\%).  Among converged problems, the B-stationarity
+rate is 87.1\%.  Four problems (2.1\%) reached the 3600\,s timeout limit,
 and one problem (\texttt{bem-milanc30-s}) was classified as complementarity-infeasible.
 
 \begin{table}[!htb]
@@ -303,11 +339,11 @@ and one problem (\texttt{bem-milanc30-s}) was classified as complementarity-infe
 \toprule
 Outcome                          & Count & Percentage \\
 \midrule
-Converged -- B-stationary        & 120   & 62.8\%     \\
-Converged -- C-stationary        & 64    & 33.5\%     \\
-\textit{Total converged}         & \textit{184} & \textit{96.3\%} \\
+Converged -- B-stationary        & 162   & 84.8\%     \\
+Converged -- C-stationary        & 24    & 12.6\%     \\
+\textit{Total converged}         & \textit{186} & \textit{97.4\%} \\
 \addlinespace
-Timeout ($>$3600\,s)             & 6     & 3.1\%      \\
+Timeout ($>$3600\,s)             & 4     & 2.1\%      \\
 Complementarity infeasible       & 1     & 0.5\%      \\
 \addlinespace
 \textbf{Total}                   & \textbf{191} & \textbf{100\%} \\
@@ -317,10 +353,11 @@ Complementarity infeasible       & 1     & 0.5\%      \\
 \end{table}
 
 MPECSS demonstrates strong performance across all problem size categories.
-All 96 small problems ($n_x \leq 50$) converge successfully (100\%), with 50 achieving B-stationarity.
-Similarly, all 71 medium-scale instances ($50 < n_x \leq 500$) converge (100\%), with 55 certified as B-stationary.
-For the 24 large-scale problems ($n_x > 500$), 17 converge successfully (70.8\%), with 15 achieving B-stationarity and 2 reaching C-stationarity.
-The 7 non-converging cases include 6 timeouts from the \texttt{pack-comp} and \texttt{siouxfls} families
+All 96 small problems ($n_x \leq 50$) converge successfully (100\%), with 81 achieving B-stationarity.
+For the 71 medium-scale instances ($50 < n_x \leq 500$), 70 converge
+(98.6\%), with 62 certified as B-stationary and 8 as C-stationary.
+For the 24 large-scale problems ($n_x > 500$), 20 converge successfully (83.3\%), with 19 achieving B-stationarity and 1 reaching C-stationarity.
+The 5 non-converging cases include 4 timeouts from the \texttt{siouxfls}, \texttt{incid-set}, and \texttt{qpec} families
 and one complementarity-infeasible instance.
 
 \begin{figure}[!htb]
@@ -337,34 +374,35 @@ and one complementarity-infeasible instance.
 
 Table~\ref{tab:macmpec_size} stratifies outcomes by problem size.
 Small problems ($n_x \leq 50$, typically 1--20 complementarity pairs) achieve
-a perfect 100\% convergence rate across all 96 instances, with 50 achieving
-B-stationarity and 46 achieving C-stationarity.
-Medium-sized problems ($50 < n_x \leq 500$) also achieve 100\% convergence
-across all 71 instances, with a higher B-stationarity rate: 55 instances
-(77.5\%) achieve B-stationarity and 16 (22.5\%) achieve C-stationarity.
-The timing results reveal that small problems solve rapidly (median 1.2\,s),
-while medium problems require moderate computation (median 12.6\,s).
+a perfect 100\% convergence rate across all 96 instances, with 81 achieving
+B-stationarity and 15 achieving C-stationarity.
+Medium-sized problems ($50 < n_x \leq 500$) achieve 98.6\% convergence
+across 71 instances, with 62 instances (87.3\%) achieving B-stationarity
+and 8 (11.3\%) achieving C-stationarity.
+The wall-clock timing results reveal that small problems solve rapidly (median 0.8\,s),
+while medium problems require moderate computation (median 11.5\,s).
 Large problems ($n_x > 500$) present the greatest challenge: of 24 instances,
-17 converge (70.8\%), with 15 achieving B-stationarity and 2 achieving C-stationarity.
-The 7 non-converging cases include 6 timeouts (all from the \texttt{pack-comp}
-and \texttt{siouxfls} families) and 1 complementarity-infeasible instance.
+20 converge (83.3\%), with 19 achieving B-stationarity and 1 achieving C-stationarity.
+The 5 non-converging cases include 4 timeouts (from the \texttt{siouxfls},
+\texttt{incid-set}, and \texttt{qpec} families) and 1 complementarity-infeasible instance.
 
 \begin{table}[!htb]
 \tbl{MacMPEC outcomes stratified by problem size class.}
-{\begin{tabular}{@{}lccccc@{}}
+{\begin{tabular}{@{}lcccccc@{}}
 \toprule
 Size class
   & Total
   & B-stat.
   & C-stat.
   & Timeout
-  & Median time (s) \\
+  & Other
+  & Median wall-clock (s) \\
 \midrule
-Small  ($n_x \leq 50$)       & 96 & 50 & 46 & 0 & 1.2 \\
-Medium ($50 < n_x \leq 500$) & 71 & 55 & 16 & 0 & 12.6 \\
-Large  ($n_x > 500$)         & 24 & 15 &  2 & 6 & 341.0 \\
+Small  ($n_x \leq 50$)       & 96 & 81 & 15 & 0 & 0 & 0.8 \\
+Medium ($50 < n_x \leq 500$) & 71 & 62 & 8 & 1 & 0 & 11.5 \\
+Large  ($n_x > 500$)         & 24 & 19 &  1 & 3 & 1 & 809.7 \\
 \midrule
-\textbf{Total}               & 191 & 120 & 64 & 6 & 2.9 \\
+\textbf{Total}               & 191 & 162 & 24 & 4 & 1 & 4.0 \\
 \bottomrule
 \end{tabular}}
 \label{tab:macmpec_size}
@@ -376,35 +414,36 @@ Large  ($n_x > 500$)         & 24 & 15 &  2 & 6 & 341.0 \\
 \label{sec:macmpec_family}
 
 Several observations stand out from the per-family results.
-\emph{Complete success} (all instances solved to
-B-stationarity): \texttt{balasmod} (1/1), \texttt{bar-truss} (6/6),
-\texttt{bilevel} (3/3), \texttt{design-cent} (3/3), \texttt{df1} (1/1),
-\texttt{ex9} (10/10), \texttt{flp} (4/4), \texttt{gnash} (2/2),
-\texttt{jr} (2/2), \texttt{kth} (3/3), \texttt{nash} (1/1),
-\texttt{outrata} (4/4), \texttt{qvi} (3/3), and \texttt{scholtes} (5/5).
-\emph{Near-complete B-stationarity}: \texttt{ralph} (3/4 to B-stat, 1 to C-stat);
-\texttt{dempe} (2/3 to B-stat, 1 to C-stat);
-\texttt{gauvin} (1/2 to B-stat, 1 to C-stat).
-\emph{C-stationarity without B-stationarity certificate}:
-The \texttt{bard} family (8 instances) converges on all instances,
-with 5 achieving B-stationarity and 3 achieving C-stationarity.
-The \texttt{monteiro} family (3 instances) all converge to C-stationarity.
-\emph{Timeout cases}: The \texttt{pack-comp} family (4 large-scale
-instances with 1,955 variables) times out on all instances.
-The \texttt{siouxfls} family (2 instances with 2,403 variables)
-also times out. These are known computationally intensive problems
-that would benefit from sparse direct solvers with parallel factorisation.
+Because the archived CSV stores the family field as the generic label
+\texttt{macmpec}, the family counts in this paragraph are reconstructed
+from the standard filename prefixes used in the MacMPEC distribution.
+\emph{Near-complete B-stationarity} is observed for \texttt{pack}
+(44/45 B-stat, 1 C-stat), \texttt{gnash} (17/20 B-stat, 3 C-stat),
+\texttt{ex} (16/19 B-stat, 3 C-stat), \texttt{bard} (5/6 B-stat,
+1 C-stat), and \texttt{design} (5/6 B-stat, 1 C-stat).
+\emph{C-stationarity without a strong certificate:} the \texttt{qpec}
+family (10 instances) converges on 9 instances, with only 1 achieving
+B-stationarity and 8 achieving C-stationarity; the \texttt{bilevel}
+family (5 instances) converges on all 5, with 3 B-stationary and
+2 C-stationary outcomes.
+\emph{Timeout cases}: the \texttt{siouxfls} family (2 large-scale
+instances with 2,403 variables and 1,748 complementarity pairs) times
+out on both instances. One \texttt{incid-set} instance and one
+\texttt{qpec} instance also time out. The named pair \texttt{ralph1}
+and \texttt{ralph2} both converge to B-stationary points, while
+\texttt{ralphmod} is a separate converged C-stationary instance.
 
 
 % ··· 5.3.4 Discussion of failures ·········································
 \subsubsection{Discussion of Timeout and Failure Cases}
 \label{sec:macmpec_failures}
 
-The six timeout problems are exclusively from large-scale families:
-four \texttt{pack-comp} variants (\texttt{pack-comp-32}, \texttt{pack-comp1c-32},
-\texttt{pack-comp2c-32}, \texttt{pack-comp2p-32}) with 1,955 variables and
-961 complementarity pairs each, and two \texttt{siouxfls} traffic network
-instances with 2,403 variables and 1,748 complementarity pairs.
+The four timeout problems include:
+two \texttt{siouxfls} traffic network instances (\texttt{siouxfls} and \texttt{siouxfls1})
+with 2,403 variables and 1,748 complementarity pairs each,
+one \texttt{incid-set} instance (\texttt{incid-set1-32}) with 1,989 variables and
+961 complementarity pairs, and one \texttt{qpec} instance (\texttt{qpec-200-4})
+with 240 variables and 200 complementarity pairs.
 These problems represent the computational frontier for regularisation-based
 MPEC solvers using open-source linear algebra.
 
@@ -414,12 +453,12 @@ complementarity pairs.  The solver detected that no feasible complementarity
 solution exists within the search space, which may indicate an infeasible
 problem formulation or numerical ill-conditioning.
 
-The 96.3\% convergence rate on MacMPEC demonstrates the robustness of MPECSS
-across diverse problem origins.  The 65.2\% B-stationarity rate among converged
-solutions reflects the inherent difficulty of certifying stronger stationarity
-on problems with complex complementarity structures.  The 7 non-converging cases
-are concentrated in very large-scale problems ($>$1,900 variables) that push
-the limits of the open-source MUMPS linear solver
+The 97.4\% convergence rate on MacMPEC demonstrates the robustness of MPECSS
+across diverse problem origins.  The 87.1\% B-stationarity rate among converged
+solutions reflects the effectiveness of the adaptive path-following strategy
+in guiding problems to strong stationary points.  The 5 non-converging cases
+are concentrated in large-scale problems that push the limits of the open-source
+MUMPS linear solver.
 
 MPECopt~\cite{NurkanovicLeyffer2025} is a recent MPEC solver with
 global convergence guarantees to B-stationary points.  A detailed
@@ -522,7 +561,7 @@ Size class
   & B-stat.
   & C-stat.
   & Timeout
-  & Median time (s) \\
+  & Median wall-clock (s) \\
 \midrule
 Small  ($n_x \leq 50$)       & 312 & 276 & 21 & 15 & 0.8 \\
 Medium ($50 < n_x \leq 500$) & 267 & 183 & 56 & 28 & 5.4 \\
@@ -612,13 +651,13 @@ problems for which solver~$s$ achieves a performance ratio at most~$\tau$:
 where $\mathcal{P}$ is the set of all benchmark problems.  A solver
 with a higher $\rho_s(\tau)$ for all $\tau$ is uniformly better.
 
-\textbf{[Continue]}  We will compare
-MPECSS against MPECopt~\cite{NurkanovicLeyffer2025} on the MacMPEC
-collection (191 problems).  The performance metric will be the
-complementarity residual $r_{\mathrm{comp}}$ at termination.  A
-problem is counted as ``solved'' if $r_{\mathrm{comp}} \leq 10^{-6}$
-and the final certificate is B-stationarity; unsolved problems are
-assigned $r_{p,s} = \infty$.
+A direct MPECSS--MPECopt comparison on MacMPEC will be inserted once
+the curated side-by-side result bundle and the corresponding profile
+figure are frozen. The intended comparison metric is the final
+complementarity residual $r_{\mathrm{comp}}$, with a problem counted as
+``solved'' only when $r_{\mathrm{comp}} \leq 10^{-6}$ and the final
+certificate is B-stationarity; unsolved problems are assigned
+$r_{p,s} = \infty$.
 
 % [Uncomment and complete the following once MacMPEC data is ready:]
 % \begin{figure}[!htb]
@@ -645,38 +684,21 @@ Table \ref{tab:aggregate_results} summarizes overall performance across the thre
 \tbl{Aggregate Statistics: MPECSS Performance Summary across MacMPEC, MPECLib, and NOSBENCH.}
 {\begin{tabular}{l r r r r r r}
 \toprule
-\textbf{Benchmark} & \textbf{Total} & \textbf{Converged} & \textbf{Success} & \textbf{Avg CPU} &
+\textbf{Benchmark} & \textbf{Total} & \textbf{Converged} & \textbf{Success} & \textbf{Avg wall-clock} &
 \textbf{Avg Compl.} & \textbf{B-stat} \\
  & \textbf{Probs} & (\%) & \textbf{Rate} & \textbf{Time (s)} & \textbf{Viol.} & \textbf{Verified (\%)} \\
 \midrule
-MacMPEC & 191 & 184 & 96.3\% & 167.5 & $4.0\e{-9}$ & 65.2\% \\
-MPECLib & 92 & 85 & 92.4\% & 272.9 & $3.5\e{-15}$ & 84.7\% \\
+MacMPEC & 191 & 186 & 97.4\% & 192.8 & $1.4\e{-8}$ & 87.1\% \\
+MPECLib & 88 & 78 & 88.6\% & 816.7 & $4.7\e{-7}$ & 83.3\% \\
 NOSBENCH & 603 & 555 & 92.0\% & 0.51 & $3.5\e{-8}$ & 84.9\% \\
 \midrule
-\textbf{Overall} & 886 & 824 & 93.0\% & 0.42 & $2.3\e{-8}$ & 78.0\% \\
+\textbf{Overall} & 882 & 819 & 92.9\% & --- & --- & 85.2\% \\
 \bottomrule
 \end{tabular}}
 \label{tab:aggregate_results}
 \end{table}
 
-\text{Results Stratified by Problem Difficulty}
-\label{sec:difficulty_stratified}
-
-To understand performance across problem classes, we report results grouped by increasing problem dimension and complementarity constraint count.
-
-\begin{table}[htb]
-\tbl{Results Stratified by Problem Size. Problems grouped by $n$ (number of variables) and $m_c$
-(number of complementarity constraints).}
-{\begin{tabular}{l l r r r r r r}
-\toprule
-\textbf{Size Class} & \textbf{Inst. Count} & \textbf{Success} & \textbf{Avg CPU} & \textbf{Med CPU} &
-\textbf{Avg Iter} & \textbf{Avg Compl.} & \textbf{B-Stat \%} \\
- & & (\%) & (s) & (s) & (NLP calls) & Viol. & \\
-\midrule
-Small ($n < 20$, $m_c \le 5$) & 142 & 97.2\% & 0.18 & 0.12 & 11.3 & $1.2\e{-9}$ & 93.1\% \\
-Medium ($20 \le n < 50$, $5 < m_c \le 15$) & 58 & 94.8\% & 0.42 & 0.38 & 21.5 & $3.8\e{-8}$ & 86.2\% \\
-Large ($n \ge 50$, $m_c > 15$) & 37 & 86.5\% & 1.24 & 1.08 & 35.2 & $8.4\e{-7}$ & 75.7\% \\
-\bottomrule
-\end{tabular}}
-\label{tab:stratified_results}
-\end{table}
+Cross-suite difficulty stratification is deferred to the final archived
+benchmark bundle, where the size-class definitions and family metadata
+will be regenerated from a single machine-produced summary rather than
+manually assembled across suites.

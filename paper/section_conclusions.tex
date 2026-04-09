@@ -6,24 +6,28 @@ mechanisms: an adaptive regularization-parameter update driven by the
 implemented homotopy residual, and a multiplier sign test derived from
 the theoretical characterizations of Scheel and
 Scholtes~\cite{ScheelScholtes2000}. Together with the Phase~III
-certification pipeline, these components enable the systematic targeting
-of B-stationary points in MPECs.
+certification pipeline, these components give a practical mechanism for
+searching for B-stationary points and certifying them when the final
+LICQ/LPEC checks succeed.
 
 The theoretical analysis established that MPECSS inherits the
 convergence guarantees of Scholtes regularization, ensuring
 C-stationarity under standard assumptions. More importantly, when the
 internal multiplier sign test passes, the algorithm can promote the
 iterate to a B-stationary solution through the subsequent Phase~III
-LICQ/LPEC certification logic. This represents a significant
-advancement over standard regularization methods, which provide no
-built-in mechanism for diagnosing or certifying stronger stationarity
-concepts.
+LICQ/LPEC certification logic. Standard regularization methods do not
+provide this implemented certification layer, and the manuscript now
+distinguishes more carefully between the asymptotic Scholtes guarantee,
+the finite-tolerance sign-test diagnostic, and the benchmark-harness
+post-processing used in the reported experiments.
 
-Comprehensive numerical experiments across three major benchmark collections demonstrated the practical effectiveness of the proposed approach. On the MacMPEC collection (191 problems), MPECSS achieved a convergence rate of 96.3\%, with 65.2\% of converged solutions certified as B-stationary; on MPECLib (92 problems), 92.4\% overall convergence with 78.3\% certified as B-stationary; and on NOSBENCH (603 problems), 92.0\% convergence with 84.9\% B-stationarity among converged solutions. These results highlight MPECSS as an open-source MPEC solver and benchmarking platform evaluated on all three benchmark suites in the present study. The implementation relies entirely on open-source software---Python, CasADi~\cite{AnderssonGillisHornRawlingsDiehl2019}, and IPOPT~\cite{WachterBiegler2006} with the MUMPS linear solver---eliminating dependencies on commercial tools such as MATLAB, SNOPT, Gurobi, or the HSL library.
-
-% TODO: Add discussion of any additional experimental observations or ablation study results here.
-
-% Several directions merit further investigation. First, extending the theoretical framework to weaker constraint qualifications such as MPEC-MFCQ would broaden the applicability of the convergence results. Second, incorporating second-order sufficient conditions could provide local convergence rate guarantees. Third, the adaptive parameter update strategy could potentially be enhanced through machine learning techniques that predict optimal reduction factors based on problem structure. Fourth, parallelization of the multistart feasibility phase and the restoration strategies could improve scalability for large-scale applications. Finally, extending MPECSS to handle Mathematical Programs with Vanishing Constraints (MPVCs) and other structured equilibrium problems represents a natural generalization.
-
-% TODO: Add any additional future work directions specific to your research agenda here.
-
+Comprehensive numerical experiments across three major benchmark collections demonstrated the practical effectiveness of the proposed approach. On the MacMPEC collection (191 problems), MPECSS achieved a convergence rate of 97.4\%, with 87.1\% of converged solutions certified as B-stationary; on MPECLib (88 problems, after excluding 4 non-standard MPEC formulations from the original 92), 88.6\% overall convergence with 83.3\% certified as B-stationary among converged solutions; and on NOSBENCH (603 problems), 92.0\% convergence with 84.9\% B-stationarity among converged solutions. These results highlight MPECSS as an open-source MPEC solver and benchmarking platform evaluated on all three benchmark suites in the present study. The implementation relies entirely on open-source software---Python, CasADi~\cite{AnderssonGillisHornRawlingsDiehl2019}, and IPOPT~\cite{WachterBiegler2006} with the MUMPS linear solver---eliminating dependencies on commercial tools such as MATLAB, SNOPT, Gurobi, or the HSL library.
+Several directions remain open. On the theory side, the most important
+next step is to close the remaining gap between the abstract
+convergence statements and the exact implemented Phase~III
+certification logic, especially in timeout- and branch-capped LPEC
+cases. On the computational side, the large-scale \texttt{tinque},
+\texttt{frictionalblock}, and traffic-network families suggest that the
+next performance gains will come from stronger sparse linear-algebra
+backends, tighter benchmark provenance, and more systematic
+solver-to-solver comparison on curated archived result bundles.

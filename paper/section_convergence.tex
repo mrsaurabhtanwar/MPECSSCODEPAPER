@@ -142,8 +142,8 @@ sign conditions at biactive indices $\ell \in \mathcal{I}_{00}(x^k)$:
   \gamma^{G,k}_\ell \geq -\tau, \quad \gamma^{H,k}_\ell \geq -\tau,
   \label{eq:sign_test_conditions}
 \end{equation}
-with a tolerance chosen adaptively in the implementation as
-$\tau_k=\max\{10^{-8},\sqrt{t_k}\}$. If all biactive indices satisfy
+with the fixed sign-test tolerance $\tau$ (default $10^{-6}$ in the
+released solver). If all biactive indices satisfy
 these conditions, the iterate $x^k$ is accepted as an
 S-stationarity candidate. By~\cite{ScheelScholtes2000},
 S-stationarity implies B-stationarity:
@@ -155,11 +155,12 @@ Let $x^*$ be feasible for~\eqref{eq:general_mpec}. If $x^*$ is S-stationary (Def
 
 In practice, the sign test is a fast algebraic check performed after
 each NLP solve. The biactive indices are detected adaptively with a
-tolerance $\sigma_k = \max(10^{-8}, \sqrt{t_k})$, ensuring that
-thresholds scale with the regularization parameter. A sign-test pass is
-used to identify an S-stationarity candidate and to steer the adaptive
-path; final B-stationarity is reported only after the Phase~III LICQ or
-LPEC checks.
+tolerance $\sigma_k = \max(10^{-8}, \sqrt{t_k})$, ensuring that the
+screening set scales with the regularization parameter even though the
+sign threshold $\tau$ itself is fixed. A sign-test pass is therefore an
+implementation-level diagnostic for an S-stationarity candidate and for
+adaptive steering; final B-stationarity is reported only after the
+Phase~III LICQ or LPEC checks.
 
 \subsection{Role of Restoration and Feasibility Phase}
 \label{sec:restoration_convergence}
@@ -190,12 +191,22 @@ $\text{NLP}(t_k)$ are well-posed from the outset.
 \subsubsection{Restoration and Cascading Recovery}
 \label{sec:restoration_no_harm}
 
-When the multiplier sign test fails at iteration $k$, MPECSS attempts a \emph{restoration phase} applying one of three strategies (random perturbation, directional escape, or quadratic regularizer) to move $x^k$ into a region where the sign test passes. Crucially, restoration does not violate Scholtes's convergence guarantee:
+When the multiplier sign test fails at iteration $k$, MPECSS attempts a
+\emph{restoration phase} applying one of three strategies (random
+perturbation, directional escape, or quadratic regularizer) to move
+$x^k$ into a region where the sign test passes.
 
-\begin{lemma}[Restoration Preserves Scholtes Convergence]
-\label{lem:restoration_preservation}
-Let $x^k$ be the solution of $\text{NLP}(t_k)$ with multipliers that fail the sign test. If a restoration strategy produces a point $x^k_{\text{restored}}$ in the feasible region that also solves $\text{NLP}(t_k)$ (or approximately), then the sequence $\{x^k_{\text{restored}}\}$ satisfies the same asymptotic convergence as the Scholtes sequence. If all restoration strategies fail and the algorithm continues with the standard parameter update $t_{k+1} = \kappa t_k$, the algorithm reverts to the base Scholtes scheme and still converges to at least C-stationarity.
-\end{lemma}
+\begin{remark}[Restoration Is Heuristic]
+\label{rem:restoration_preservation}
+The restoration mechanisms are implementation heuristics used to improve
+the current iterate at fixed $t_k$ or to recover from solver failure.
+They are not accompanied by a separate convergence proof beyond the base
+Scholtes framework. The rigorous asymptotic guarantee in this paper
+therefore comes from the underlying regularization sequence of
+Theorem~\ref{thm:scholtes}; when restoration fails, the implementation
+falls back to the standard outer update or exits with a non-certifying
+status.
+\end{remark}
 
 
 \subsection{B-Stationarity Certification and LPEC Post-Solve}
@@ -212,55 +223,94 @@ MPEC-LICQ may not hold.
 When the sign test is passed at the final iterate $x^*$ and MPEC-LICQ
 holds at $x^*$, the algorithm certifies $x^*$ as B-stationary by the
 equivalence between S- and B-stationarity under LICQ. If MPEC-LICQ
-does not hold or is uncertain, MPECSS solves an LPEC to provide a
-fall-back geometric verification:
+does not hold or is uncertain, MPECSS solves an implementation-aware
+LPEC screen to provide a fall-back geometric verification:
 
-\begin{definition}[LPEC for B-Stationarity~\citep{LuoPangRalph1996,FletcherLeyfferRalphScholtes2006,NurkanovicLeyffer2025}]
-Given a candidate $x^*$, the LPEC (Linear Program with Equilibrium Constraints) is:
+\begin{definition}[Implementation-Aware LPEC Screen~\citep{LuoPangRalph1996,FletcherLeyfferRalphScholtes2006,NurkanovicLeyffer2025}]
+Given a candidate $x^*$, the directional LP solved inside the
+implementation has the form
 \begin{equation}
 \begin{aligned}
-  \text{LPEC}(x^*): \quad & \min_{d \in \mathbb{R}^n} \quad && \nabla f(x^*)^\top d \\
+  \text{LP}(x^*,\rho,\beta): \quad & \min_{d \in \mathbb{R}^n} \quad && \nabla f(x^*)^\top d \\
   & \text{s.t.} \quad && \nabla g_i(x^*)^\top d \leq 0 \quad (i \in \mathcal{I}_g(x^*)), \\
   & && \nabla h_j(x^*)^\top d = 0 \quad (j = 1, \ldots, p), \\
-  & && \nabla G_\ell(x^*)^\top d \geq 0, \quad \nabla H_\ell(x^*)^\top d \geq 0 \quad (\ell \in \mathcal{I}_{00}(x^*)), \\
-  & && \nabla G_\ell(x^*)^\top d \text{ free}, \quad \nabla H_\ell(x^*)^\top d \text{ free} \quad (\ell \notin \mathcal{I}_{00}(x^*)), \\
-  & && x^* + d \in [x_L, x_U].
+  & && \nabla G_\ell(x^*)^\top d = 0 \quad (\ell \in \mathcal{I}_G), \\
+  & && \nabla H_\ell(x^*)^\top d = 0 \quad (\ell \in \mathcal{I}_H), \\
+  & && \text{branch constraints determined by } \beta \text{ on each biactive index}, \\
+  & && -\rho \le d_i \le \rho,\qquad x^* + d \in [x_L, x_U].
 \end{aligned}
 \label{eq:lpec}
 \end{equation}
-If the optimal objective of LPEC is $\geq 0$ (i.e., no descent direction exists), then $x^*$ is B-stationary.
+Here $\beta$ indexes the XOR branch choice for each biactive pair:
+either the $G$-side or the $H$-side remains active, with distinct
+inequality orientation for lower-bound and upper-bound
+box-complementarity cases. The implementation enumerates these branches
+up to a hard cap of $2^{15}$ and solves each LP with a finite wall-clock
+timeout. A completed enumeration with objective value $\ge 0$ certifies
+that no descent direction was found within this implemented model; a
+timeout or cap-exceeded run yields an \emph{unverifiable} outcome rather
+than a certificate.
 \end{definition}
 
-\begin{theorem}[LPEC Certification of B-Stationarity]
+\begin{proposition}[LPEC Certification of B-Stationarity]
 \label{thm:lpec_bstat}
-If $x^*$ is feasible for~\eqref{eq:general_mpec} and the LPEC~\eqref{eq:lpec} has optimal value $\geq 0$, then $x^*$ is B-stationary. Moreover, if MPEC-LICQ holds at $x^*$, B-stationarity is equivalent to S-stationarity (Definition~\ref{def:mpec_stationarity}).
-\end{theorem}
+If $x^*$ is feasible for~\eqref{eq:general_mpec}, the full branch
+enumeration associated with~\eqref{eq:lpec} completes, and every branch
+LP has optimal value $\geq 0$, then the implemented screen certifies
+$x^*$ as B-stationary. Moreover, if MPEC-LICQ holds at $x^*$,
+B-stationarity is equivalent to S-stationarity
+(Definition~\ref{def:mpec_stationarity}). If the enumeration times out
+or exceeds the branch cap before completion, the implementation does not
+claim B-stationarity.
+\end{proposition}
 
 \subsubsection{Stationarity Hierarchy in MPECSS Outcomes}
 \label{sec:stationarity_outcomes}
 
-The MPECSS algorithm produces one of the following outcomes for a converged problem:
+The MPECSS algorithm produces one of the following outcomes for a
+converged problem:
 \emph{B-Stationary (sign test pass + MPEC-LICQ):} The solution passes the multiplier sign test and MPEC-LICQ is verified. The implementation then certifies B-stationarity by S/B equivalence under LICQ.
-\emph{B-Stationary (LPEC certified):} LPEC certification (Theorem~\ref{thm:lpec_bstat}) confirms no descent direction exists, verifying B-stationarity.
-\emph{S-Stationary candidate (sign test pass, MPEC-LICQ uncertain):} The multiplier sign test passes, confirming an S-stationarity candidate. When MPEC-LICQ holds at $x^*$, S-stationarity is equivalent to B-stationarity~\citep{ScheelScholtes2000}; when MPEC-LICQ fails, LPEC certification (Theorem~\ref{thm:lpec_bstat}) is used to confirm or refute B-stationarity.
-\emph{C-Stationary or weaker:} If the algorithm terminates before the sign test passes, the solution is guaranteed to be at least C-stationary by Theorem~\ref{thm:scholtes}.
+\emph{B-Stationary (LPEC certified):} Full LPEC certification (Proposition~\ref{thm:lpec_bstat}) confirms no descent direction exists, verifying B-stationarity.
+\emph{S-Stationary candidate (sign test pass, MPEC-LICQ uncertain):} The multiplier sign test passes, confirming an S-stationarity candidate. When MPEC-LICQ holds at $x^*$, S-stationarity is equivalent to B-stationarity~\citep{ScheelScholtes2000}; when MPEC-LICQ fails, LPEC certification (Proposition~\ref{thm:lpec_bstat}) is used to confirm or refute B-stationarity.
+\emph{C-Stationary or unverifiable:} If the algorithm terminates with a
+converged complementarity-feasible point but without a B-stationarity
+certificate, the reported point is classified as C-stationary. If the
+LPEC screen times out, exceeds the branch cap, or the main solve fails,
+the implementation reports an unverifiable or non-converged status
+rather than claiming a theoretical stationarity level.
 
 \subsection{Convergence Summary and Computational Implications}
 \label{sec:convergence_summary}
 
-\begin{theorem}[Main Convergence Result for MPECSS]
+\begin{theorem}[Implementation-Aware Convergence Summary for MPECSS]
 \label{thm:mpecss_convergence}
 Under Assumptions~\ref{ass:smoothness}--\ref{ass:nlp_accuracy}, the MPECSS algorithm (Phases~I--III) generates a sequence $\{x^k\}$ such that:
 (i) The sequence is bounded (or has a limit point) in $\mathbb{R}^n$.
 (ii) Any limit point $x^*$ is feasible for the original MPEC~\eqref{eq:general_mpec}.
-(iii) If the algorithm returns a solution with status ``converged'' and sign test PASS, then $x^*$ is S-stationary; the reported B-stationarity label is then produced by the Phase~III LICQ/LPEC certification logic.
+(iii) If the algorithm returns a complementarity-feasible solution with
+status ``converged'' and sign test PASS, then $x^*$ is treated as an
+S-stationarity candidate under the implemented finite-tolerance test;
+the reported B-stationarity label is then produced by the Phase~III
+LICQ/LPEC certification logic.
 (iv) If MPEC-LICQ (Definition~\ref{def:mpec_licq}) holds at $x^*$, then S-stationarity and B-stationarity are equivalent.
-(v) If the algorithm terminates early (e.g., maximum iterations reached) and LPEC certification passes, then $x^*$ is B-stationary.
-(vi) If the algorithm terminates without sign test pass and LPEC cannot verify B-stationarity, then $x^*$ is guaranteed to be at least C-stationary under MPEC-LICQ, by Theorem~\ref{thm:scholtes}.
+(v) If the full LPEC certification completes and passes, then $x^*$ is
+certified as B-stationary.
+(vi) If the LPEC certification times out or the branch cap is reached
+without a completed proof and without a detected descent direction, the
+implementation reports \texttt{stationarity\_unverifiable} rather than a
+B-stationarity certificate.
+(vii) The benchmark harness may additionally post-process some
+near-feasible non-converged outcomes with
+$r_{\mathrm{comp}} \le 10\,\varepsilon_{\mathrm{tol}}$; this is an
+implementation-level acceptance rule and should not be read as a new
+asymptotic convergence theorem.
 \end{theorem}
 
 
-While Theorem~\ref{thm:mpecss_convergence} establishes asymptotic convergence, the rate depends on the conditioning of the MPEC and the effectiveness of the adaptive $t$-update. With the superlinear reduction (Path 1, Equation~\eqref{eq:superlinear_reduction}), the outer loop convergence can be very fast once locked on; typical runs achieve $r_k < 10^{-7}$ within 10--30 outer iterations on well-behaved problems. The restoration phase and early stagnation detection further accelerate convergence by avoiding plateaus.
+While Theorem~\ref{thm:mpecss_convergence} establishes the
+implementation-aware asymptotic picture, the practical rate still
+depends strongly on problem conditioning, the chosen NLP solver, and the
+effectiveness of the adaptive $t$-update and restoration heuristics.
 
 \subsection{Local Optimality and Constraint Qualifications}
 \label{sec:local_optimality}
@@ -269,6 +319,3 @@ It is important to note that the convergence results in this section apply to \e
 
 \paragraph{Remark on Unbounded Feasible Sets}
 If the feasible set is unbounded, Assumption~\ref{ass:smoothness} should be replaced with: the objective $f$ has a lower bound on $\mathcal{F}$, or standard growth conditions hold. Under these modifications, the convergence analysis remains valid, and any limit point of an unbounded sequence $\{x^k\}$ satisfies the same stationarity certificates.
-
-
-

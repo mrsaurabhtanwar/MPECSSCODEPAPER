@@ -95,7 +95,7 @@ Kunwar Vijay Kumar Singh\textsuperscript{b}\thanks{CONTACT K.~V.~K.~Singh.
 % ABSTRACT
 
 \begin{abstract}
-We propose MPECSS (MPEC Stationarity Search), an open-source algorithm for solving Mathematical Programs with Equilibrium Constraints (MPECs), which arise in bilevel optimization, optimal control, and equilibrium modeling. Standard Scholtes regularization converges only to C-stationary points in general, a comparatively weak optimality concept providing no systematic mechanism for certifying the stronger B-stationary solutions required for genuine local optimality. MPECSS addresses this limitation through two core mechanisms: an adaptive regularization-parameter update driven by complementarity residuals, and a multiplier sign test that dynamically steers the solver toward B-stationary points. Implemented in Python via CasADi and IPOPT, with no commercial dependencies, the implementation is fully open-source and reproducible. Convergence analysis establishes C-stationarity under standard assumptions; furthermore, MPECSS systematically certifies B-stationarity either directly when the multiplier sign test confirms S-stationarity under MPEC-LICQ or alternatively through LPEC (Linear Program with Equilibrium Constraints) verification. Benchmarking on MacMPEC, MPECLib, and NOSBENCH achieves convergence rates of 96.3\%, 92.4\%, and 93\%, respectively, positioning MPECSS as an open-source method evaluated across all three major MPEC benchmark collections.
+We propose MPECSS (MPEC Stationarity Search), an open-source algorithm for solving Mathematical Programs with Equilibrium Constraints (MPECs), which arise in bilevel optimization, optimal control, and equilibrium modeling. Standard Scholtes regularization converges only to C-stationary points in general, a comparatively weak optimality concept providing no systematic mechanism for certifying the stronger B-stationary solutions required for genuine local optimality. MPECSS addresses this limitation through two core mechanisms: an adaptive regularization-parameter update driven by complementarity residuals, and a multiplier sign test that dynamically steers the solver toward B-stationary points. Implemented in Python via CasADi and IPOPT, with no commercial dependencies, the implementation is fully open-source and reproducible. Convergence analysis establishes C-stationarity under standard assumptions; furthermore, MPECSS systematically certifies B-stationarity either directly when the multiplier sign test confirms S-stationarity under MPEC-LICQ or alternatively through LPEC (Linear Program with Equilibrium Constraints) verification. Benchmarking on MacMPEC, MPECLib, and NOSBENCH achieves convergence rates of 97.4\%, 88.6\%, and 92.0\%, respectively, positioning MPECSS as an open-source method evaluated across all three major MPEC benchmark collections.
 \end{abstract}
 
 \begin{keywords}
@@ -174,16 +174,16 @@ they determine any aspect of the experimental outcomes.
 
 \section*{Funding}
 
-% TODO: Add funding details, or state: The authors report no funding.
+The authors report no funding.
 
 
 \section*{Data availability statement}
 
 The benchmark problem instances used in this study (MacMPEC, MPECLib,
-and NOSBENCH) are publicly available as referenced in the text. The raw
-numerical results, benchmark JSON files, run-environment metadata, and
-all scripts required to reproduce the reported figures and tables are
-available at
+and NOSBENCH) are publicly available as referenced in the text. The
+checked-in repository contains the archived benchmark CSV files,
+available run-environment metadata, and the scripts used to generate
+the reported figures and tables. These materials are available at
 \url{https://github.com/mrsaurabhtanwar/MPECSS}.
 
 
@@ -193,10 +193,14 @@ The MPECSS algorithm is freely available under the Apache~2.0 licence.
 The source code, benchmark datasets, and scripts required to reproduce
 all reported results are available on GitHub at
 \url{https://github.com/mrsaurabhtanwar/MPECSS}.
-The verified MPECLib artifact discussed in this manuscript was produced
-with solver version~1.0.3 at git commit \texttt{21e512f} under
-Python~3.12.3 with CasADi~3.7.2, NumPy~2.4.4, pandas~3.0.2,
-SciPy~1.17.1, psutil~7.2.2, and matplotlib~3.10.8.
+The archived MPECLib benchmark artifact discussed in this manuscript
+was produced with solver version~1.0.3 at git commit
+\texttt{2d31e80} under Python~3.12.12 with CasADi~3.7.2,
+NumPy~2.0.2, pandas~2.3.3, SciPy~1.16.3, psutil~5.9.5, and
+matplotlib~3.10.0. The accompanying run-environment JSON records a
+Linux execution environment on an Intel Xeon platform with
+31.35\,GB RAM; the manuscript's numerical discussion refers to those
+archived run-environment files where applicable.
 
 
 % =========================================================================

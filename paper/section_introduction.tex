@@ -71,16 +71,14 @@ theoretical and numerical comparison among different relaxation methods.
 
 Existing methods face practical limitations: SQP approaches~\cite{FletcherLeyffer2004}
 often depend on commercial solvers like SNOPT~\cite{GillMurraySaunders2005SNOPT},
-while penalty~\cite{HuRalph2004,Anitescu2005} and interior-point
-methods~\cite{RaghunnathanBiegler2005,LeyfferLopezCalvaNocedal2006}
-frequently encounter numerical instability near the feasible boundary. The recent MPECopt algorithm of Nurkanovi\'{c} and
-Leyffer~\cite{NurkanovicLeyffer2025} is an open-source method with global convergence to B-stationary
-points and strong performance on the MacMPEC (191 problems)
-benchmark~\cite{Leyffer2000}; however, its implementation depends on
-the commercial MATLAB environment and its strongest results rely on the
-commercial solver Gurobi, and it has not yet been validated on the
-MPECLib (92 problems)~\cite{MPECLib} or NOSBENCH (603 problems)~\cite{NurkanovicPozharskiyDiehl2024}
-collections.
+and many practically competitive implementations still rely on
+commercial linear-algebra or quadratic-programming components. The
+recent MPECopt algorithm of Nurkanovi\'{c} and
+Leyffer~\cite{NurkanovicLeyffer2025} is an open-source method with
+global convergence to B-stationary points and strong reported
+performance on the MacMPEC benchmark~\cite{Leyffer2000}; however, its
+current implementation depends on the commercial MATLAB environment and
+its strongest reported results use the commercial solver Gurobi.
 
 Significant gaps remain in the practical MPEC software landscape. Many
 algorithms rely on commercial software (HSL, SNOPT, Gurobi), standard
@@ -119,7 +117,8 @@ The main contributions of this paper are summarized as follows:
   detect S-stationarity candidates and steer the subsequent
   certification logic.
 \emph{Open-source benchmark infrastructure:} A reproducible benchmark
-  runner for MacMPEC, MPECLib, and NOSBENCH with 249-column CSV logging,
+  runner for MacMPEC, MPECLib, and NOSBENCH with machine-generated,
+  wide-schema CSV logging (300+ columns in the current archived schema),
   environment capture, process-level isolation for per-problem
   timeout enforcement, resume support (via \texttt{--resume}),
   retry-failed logic, and graceful recovery from timeout, interrupt,
@@ -131,7 +130,6 @@ The main contributions of this paper are summarized as follows:
   regularization, while stronger B-stationarity certificates are
   produced in Phase~III when LICQ equivalence or LPEC verification
   succeeds.
-
 
 
 

@@ -89,7 +89,17 @@ The formulation of the objective $\Theta(x)$ is progressively adjusted in a casc
 
 No regularization parameter appears in any of these formulations; each is a standard smooth NLP solved by IPOPT~\cite{WachterBiegler2006}. Upon convergence of any formulation, the resulting point $\bar{x}$ satisfies $G_\ell(\bar{x}) \cdot H_\ell(\bar{x}) \approx 0$ for all~$\ell$ and lies in the feasible region of the original constraints. This point is then used as the warm-start~$x^0$ for the main Scholtes outer loop.
 
-Three baseline safety mechanisms augment Phase~I's reliability. First, a \textit{structured multistart} deploys deterministic grid and Gaussian-perturbed starts to avoid local failures, a standard approach in global search heuristics. Second, a \textit{displacement guard} rejects candidates drifting excessively ($\|\bar{x}^{(s)} - x_0\|_R \geq D_{\max}$) from the user-provided region to retain local relevance. Third, a \textit{basic quality check} guarantees the newly selected starting point does not drastically degrade the initial objective value.
+Three baseline safety mechanisms augment Phase~I's reliability. First,
+a \textit{structured multistart} deploys deterministic bound/midpoint
+candidates together with Gaussian-perturbed starts to improve robustness
+when the user-supplied initial point is poor. Second, a
+\textit{displacement guard} rejects candidates drifting excessively
+($\|\bar{x}^{(s)} - x_0\|_R \geq D_{\max}$) from the user-provided
+region to retain local relevance. Third, the implementation records the
+Phase~I objective values for diagnostics, but the actual acceptance rule
+is driven by improved complementarity residual together with the
+displacement safeguard, rather than by a separate original-objective
+filter.
 
 In practice, the solver may fail to find an initial search direction from the user-provided starting point, immediately reporting infeasibility. To improve startup robustness without changing the theoretical Scholtes framework~\cite{Scholtes2001}, MPECSS cycles through the three progressively more robust objective formulations described above (L2, smooth~L1, epigraph). Each formulation provides a different gradient landscape, and the sequence is designed so that when one formulation encounters numerical difficulties, the next one often succeeds. For very large problems ($n > 3000$), Phase~I is skipped entirely to avoid excessive computational cost; in this case, the user-provided starting point is passed directly to Phase~II.
 
@@ -201,10 +211,10 @@ for robustness on ill-conditioned MPEC subproblems.\footnote{%
   ($\texttt{max\_soc}=4$), and 3 watchdog trial iterations.}
 The code base also provides an optional small-problem
 SQP$+$qpOASES~\cite{Ferreau2014qpOASES} route for problems with
-$n \leq 400$ variables, when qpOASES is available.
-Interior-point methods remain the
-default because they are the most robust across the full range of MPEC
-structures~\cite{RaghunnathanBiegler2005,LeyfferLopezCalvaNocedal2006}.
+$n \leq 400$ variables, when qpOASES is available. In the current
+implementation and archived benchmark runs, interior-point methods are
+used as the default because they were empirically the most reliable
+option across the tested problem families.
 For problems with $n \geq 500$, CasADi's MX symbolic type is used with reverse-mode automatic differentiation (\texttt{ad\_weight}$=1.0$), reducing Jacobian memory consumption from $O(n_x \times 64)$ to $O(n_g)$ compared to forward-mode; additionally, an LRU cache with automatic eviction is employed for solver templates and Jacobian functions to ensure stable memory usage during long benchmark campaigns.
 
 When the primary solve fails (e.g., due to infeasibility detection,
@@ -278,7 +288,9 @@ $\ell \in \mathcal{I}_{00}(x^k)$, the implemented sign test checks
 \gamma^{H,k}_\ell \ge -\tau,
 \]
 with a tolerance chosen in the implementation as
-$\tau_k=\max\{10^{-8},\sqrt{t_k}\}$. The Scholtes product multiplier is
+$\tau=10^{-6}$ by default. The adaptive quantity
+$\sigma_k=\max\{10^{-8},\sqrt{t_k}\}$ is used instead for detecting the
+numerically biactive set. The Scholtes product multiplier is
 not included in this test, because it is not part of the
 S-stationarity definition. If the sign test passes and the homotopy
 residual is sufficiently small, Phase~II returns an S-stationarity
@@ -572,14 +584,45 @@ refinement sequence.
 \end{aligned}
 \label{eq:bnlp}
 \end{equation}
-For biactive indices ($\ell \in \mathcal{I}_{00}$), either $G_\ell$ or $H_\ell$ must be assigned to the equality branch; the implementation first uses the primary partition and then tries limited single-flip alternatives. A polished point is accepted only if its complementarity residual remains below the implementation threshold (effectively $10^{-6}$ in the released code) and its objective value does not worsen by more than a small relative/absolute tolerance.
+For biactive indices ($\ell \in \mathcal{I}_{00}$), either $G_\ell$ or
+$H_\ell$ must be assigned to the equality branch; the implementation
+first uses the primary partition and then tries limited single-flip
+alternatives. In the core solver, a polished point is accepted only if
+its complementarity residual remains within the configured tolerance and
+its objective value does not worsen by more than a small
+relative/absolute tolerance. In the benchmark harness, an additional
+post-check may still relabel near-feasible failures with
+$r_{\mathrm{comp}} \le 10\,\varepsilon_{\mathrm{tol}}$ after the final
+B-stationarity check.
 
-\emph{LPEC-based certification and refinement:} If sign test plus LICQ do not already certify the point, we use the geometric LPEC check to determine whether a feasible descent direction exists~\cite{LuoPangRalph1996,FletcherLeyfferRalphScholtes2006}. Because the biactive complementarity constraints require $\nabla G_\ell(x^*)^\top d \geq 0$ \emph{and} $\nabla G_\ell(x^*)^\top d \cdot \nabla H_\ell(x^*)^\top d = 0$ for each $\ell \in \mathcal{I}_{00}$, the implementation enumerates all $2^{|\mathcal{I}_{00}|}$ XOR branches (either $G_\ell$ stays active or $H_\ell$ stays active per biactive index), capped at $2^{15}$ branches for tractability, and solves the resulting LPs with SciPy's \texttt{linprog(..., method='highs')} backend~\cite{HuangfuHall2018}. In benchmark mode, this certification is followed by a trust-region refinement loop with parameters $\rho_{\mathrm{init}} = 10^{-3}$, $\gamma_L = 0.1$, $N_{\mathrm{out}} = 30$, $N_{\mathrm{in}} = 15$, $tol_B = 10^{-10}$, and $tol_{\mathrm{comp}} = 10^{-8}$.
+\emph{LPEC-based certification and refinement:} If sign test plus LICQ
+do not already certify the point, we use the geometric LPEC check to
+determine whether a feasible descent direction exists~\cite{LuoPangRalph1996,FletcherLeyfferRalphScholtes2006}.
+The implemented LP model includes the active original constraints,
+active complementarity-side equalities, bound-consistent trust-region
+limits $|d_i| \le \rho$, and branch-dependent inequalities for both
+lower-bound and upper-bound biactive complementarity indices. For a
+point with $|\mathcal{I}_{00}|$ biactive pairs, the implementation
+enumerates all XOR branches (either the $G_\ell$ side or the $H_\ell$
+side stays active per biactive index), capped at $2^{15}$ branches for
+tractability, and solves the resulting LPs with SciPy's
+\texttt{linprog(..., method='highs')} backend~\cite{HuangfuHall2018}.
+If the branch enumeration times out or hits the branch cap without
+finding a descent direction, the outcome is treated as
+\texttt{stationarity\_unverifiable} rather than as a certificate. In
+benchmark mode, this certification is followed by a trust-region
+refinement loop with parameters
+$\rho_{\mathrm{init}} = 10^{-2}$, $\gamma_L = 0.1$,
+$N_{\mathrm{out}} = 30$, $N_{\mathrm{in}} = 15$,
+$tol_B = 10^{-10}$, and $tol_{\mathrm{comp}} = 10^{-8}$.
 
 In the reported experiments, every problem is post-processed by the full
 benchmark pipeline: the Phase~II output is passed through BNLP
 polishing, LPEC refinement, and a final B-stationarity post-check,
-even when the initial sign test is favorable.
+even when the initial sign test is favorable. This benchmark harness is
+therefore slightly richer than a bare call to \texttt{run\_mpecss()},
+and the numerical section reports the output of that harness rather than
+the raw Phase~II endpoint alone.
 
 
 % =========================================================================

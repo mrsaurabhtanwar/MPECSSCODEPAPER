@@ -1,6 +1,6 @@
 # MPEC-SS Algorithm Workflow Diagrams
 
-**Version:** 1.0.4
+**Version:** 1.0.3
 **Last Updated:** 2026-03-25
 
 ## Overview
@@ -23,13 +23,13 @@ This directory contains Mermaid flowchart diagrams documenting the MPEC-SS algor
 4. Copy the contents of ONE `.mmd` file and paste
 5. The preview on the right should render instantly
 
-## Parameter Reference (v1.0.4)
+## Parameter Reference (v1.0.3)
 
 | Parameter | Value | Notes |
 |-----------|-------|-------|
 | t0 | 1.0 | Initial smoothing |
 | kappa | 0.5 | Reduction factor |
-| eps_tol | 1e-7 | Complementarity tolerance |
+| eps_tol | 1e-6 | Complementarity tolerance |
 | tau | 1e-6 | Sign test tolerance |
 | max_outer | 3000 | Max Phase II iterations |
 | max_restorations | 50 | Hard cap on restorations |
@@ -39,7 +39,7 @@ This directory contains Mermaid flowchart diagrams documenting the MPEC-SS algor
 | T-floor | 1e-14 | Minimum t_k value |
 | Floor stagnation window | 20 | Iterations at floor before exit |
 
-## T-Update Regimes (Corrected in v1.0.4)
+## T-Update Regimes
 
 | Regime | Condition | Formula |
 |--------|-----------|---------|
@@ -49,7 +49,7 @@ This directory contains Mermaid flowchart diagrams documenting the MPEC-SS algor
 | post_stagnation_fast | stagnation_count >= 2 | t_new = min(kappa, 0.5) × t_k |
 | slow (default) | otherwise | t_new = kappa × t_k |
 
-**Note:** The `adaptive_jump` formula was corrected from `2×kappa×t_k` to `kappa²×t_k` in v1.0.4.
+**Note:** The current implementation uses `adaptive_jump = kappa² × t_k`.
 
 ## Color Legend
 

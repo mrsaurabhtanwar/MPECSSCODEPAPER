@@ -157,16 +157,26 @@ class SQPSolver:
         """Get or create qpOASES solver for the QP subproblem."""
         if not QPOASES_AVAILABLE:
             return None
+        if self._qp_solver is not None:
+            return self._qp_solver
         
         try:
             qp = {
-                'h': H_sparsity,
-                'a': A_sparsity if A_sparsity is not None else ca.Sparsity(0, self.n_x),
+                # Reuse one qpOASES instance per SQP solve. Creating a fresh
+                # solver each iteration is expensive and repeatedly prints the
+                # qpOASES license banner in some CasADi builds.
+                'h': ca.Sparsity.dense(self.n_x, self.n_x),
+                'a': (
+                    ca.Sparsity.dense(self.n_g, self.n_x)
+                    if self.n_g > 0
+                    else ca.Sparsity(0, self.n_x)
+                ),
             }
-            solver = ca.conic('qp', 'qpoases', qp, self.qp_opts)
-            return solver
+            self._qp_solver = ca.conic('qp', 'qpoases', qp, self.qp_opts)
+            return self._qp_solver
         except Exception as e:
             logger.warning(f"Failed to create qpOASES solver: {e}")
+            self._qp_solver = None
             return None
     
     def _update_bfgs(self, x_new, grad_new):

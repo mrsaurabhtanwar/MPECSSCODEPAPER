@@ -1430,7 +1430,10 @@ def run_benchmark_main(loader_fn: Callable[[str], Dict[str, Any]], dataset_tag: 
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S'
+        datefmt='%Y-%m-%d %H:%M:%S',
+        # Notebook/Kaggle runners often preinstall root handlers, which can
+        # duplicate coordinator log lines like "[Memory Check]".
+        force=True,
     )
     
     parser = argparse.ArgumentParser(description=f"Parallel {dataset_tag} Benchmark Runner")

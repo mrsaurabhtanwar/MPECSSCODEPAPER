@@ -19,8 +19,10 @@ from __future__ import annotations
 import argparse
 import glob
 import os
+import shutil
 import sys
 import logging
+from pathlib import Path
 
 logger = logging.getLogger("kaggle_resumable")
 
@@ -78,6 +80,19 @@ def _print_summary(csv_path: str, dataset_tag: str) -> None:
         print(f"[summary] Error reading {csv_path}: {e}", file=sys.stderr)
 
 
+def _has_output_artifacts(results_dir: str) -> bool:
+    """Return True when the results directory contains at least one file."""
+    root = Path(results_dir)
+    return root.exists() and any(path.is_file() for path in root.rglob("*"))
+
+
+def _bundle_results(results_dir: str) -> str:
+    """Create a zip archive next to the results directory."""
+    archive_path = shutil.make_archive(results_dir, "zip", root_dir=results_dir)
+    print(f"[resumable] Bundled results to: {archive_path}")
+    return archive_path
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Kaggle-friendly resumable benchmark wrapper for MPECSS."
@@ -118,6 +133,8 @@ def main() -> int:
                         help="When resuming, re-run OOM/timeout/crash problems.")
     parser.add_argument("--summary-only", action="store_true",
                         help="Print a progress summary and exit (no solving).")
+    parser.add_argument("--bundle-output", action="store_true",
+                        help="Create a zip archive of the output directory after the run.")
     parser.add_argument("--output-dir", type=str, default=None,
                         help="Directory to save results. Defaults to <repo-dir>/results. "
                              "On Kaggle, use /kaggle/working/outputs to ensure results persist.")
@@ -309,6 +326,12 @@ def main() -> int:
         )
     finally:
         sys.argv = original_argv
+
+    if args.bundle_output and not args.summary_only:
+        if _has_output_artifacts(results_dir):
+            _bundle_results(results_dir)
+        else:
+            logger.warning(f"No output artifacts found in {results_dir}; skipping archive.")
 
     return 0
 

@@ -96,7 +96,7 @@ when the user-supplied initial point is poor. Second, a
 \textit{displacement guard} rejects candidates drifting excessively
 ($\|\bar{x}^{(s)} - x_0\|_R \geq D_{\max}$) from the user-provided
 region to retain local relevance. Third, the implementation records the
-Phase~I objective values for diagnostics, but the actual acceptance rule
+Phase~I objective values for test purposes, but the actual acceptance rule
 is driven by improved complementarity residual together with the
 displacement safeguard, rather than by a separate original-objective
 filter.
@@ -273,7 +273,7 @@ constraints to MPEC-oriented multipliers by negation:
 \label{eq:multiplier_conversion}
 \end{equation}
 The multiplier of the relaxed product constraint is still extracted and
-stored for diagnostics, but it is \emph{not} part of the
+stored for test purposes, but it is \emph{not} part of the
 S-stationarity sign test. All sign tests in MPECSS are therefore
 performed only on the converted multipliers in
 Equation~\eqref{eq:multiplier_conversion}.

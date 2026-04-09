@@ -61,6 +61,7 @@ The benchmarks require the `mpecss-benchmarks` dataset:
 
 1. Download results from `/kaggle/working/outputs/`
 2. For NosBench, merge the 3 group CSVs using `scripts/merge_results.py`
+3. Download `/kaggle/working/outputs.zip` for a full archive of results, logs, and traces
 
 ## Troubleshooting
 

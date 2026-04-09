@@ -18,7 +18,7 @@ iterate to a B-stationary solution through the subsequent Phase~III
 LICQ/LPEC certification logic. Standard regularization methods do not
 provide this implemented certification layer, and the manuscript now
 distinguishes more carefully between the asymptotic Scholtes guarantee,
-the finite-tolerance sign-test diagnostic, and the benchmark-harness
+the finite-tolerance sign test, and the benchmark-harness
 post-processing used in the reported experiments.
 
 Comprehensive numerical experiments across three major benchmark collections demonstrated the practical effectiveness of the proposed approach. On the MacMPEC collection (191 problems), MPECSS achieved a convergence rate of 97.4\%, with 87.1\% of converged solutions certified as B-stationary; on MPECLib (88 problems, after excluding 4 non-standard MPEC formulations from the original 92), 88.6\% overall convergence with 83.3\% certified as B-stationary among converged solutions; and on NOSBENCH (603 problems), 92.0\% convergence with 84.9\% B-stationarity among converged solutions. These results highlight MPECSS as an open-source MPEC solver and benchmarking platform evaluated on all three benchmark suites in the present study. The implementation relies entirely on open-source software---Python, CasADi~\cite{AnderssonGillisHornRawlingsDiehl2019}, and IPOPT~\cite{WachterBiegler2006} with the MUMPS linear solver---eliminating dependencies on commercial tools such as MATLAB, SNOPT, Gurobi, or the HSL library.

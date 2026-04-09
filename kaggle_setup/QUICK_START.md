@@ -51,7 +51,8 @@ Choose the notebook for your benchmark:
 
 After completion:
 1. Go to the **"Data"** tab in the output panel
-2. Download files from `/kaggle/working/outputs/`
+2. Download `/kaggle/working/outputs.zip` for a single archive
+3. You can also inspect the unpacked files under `/kaggle/working/outputs/`
 
 ---
 

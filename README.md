@@ -69,6 +69,7 @@ MPECSS comes with a massive test suite of 886 problems to prove it works.
 ### Setup Benchmark Data
 1. Download `benchmarks.zip` from our [GitHub Releases](https://github.com/mrsaurabhtanwar/MPECSS/releases).
 2. Extract it into your project folder. **Do not rename the folder.**
+3. On Kaggle, the notebook also creates `/kaggle/working/outputs.zip` for download.
 
 ### Run the Tests
 We provide simple commands to run all tests at once:

@@ -88,7 +88,7 @@ Restoration stag.\ window & ---               & $8$         & Consecutive failur
 Restoration-comp factor  & ---                & $10$        & Skip restore if $r < 10\varepsilon_{\mathrm{tol}}$ \\
 Floor stagnation window  & ---                & $20$        & Exit if $t_k=10^{-14}$ unchanged \\
 Adaptive update          & ---                & enabled     & product-residual and stagnation based $t$-control \\
-Steering (sign test)     & ---                & enabled     & S-stationarity diagnostic plus Phase~III certification \\
+Steering (sign test)     & ---                & enabled     & S-stationarity test plus Phase~III certification \\
 Wall-clock limit         & $T_{\max}$         & $3600\,$s   & Per-problem timeout \\
 Benchmark seed           & ---                & 42          & Benchmark-runner reproducibility \\
 \bottomrule
@@ -99,7 +99,7 @@ Benchmark seed           & ---                & 42          & Benchmark-runner r
 The benchmark utility writes a detailed CSV row for every instance
 together with a per-run environment JSON recording the command line,
 package versions, and hardware configuration. In addition to standard
-convergence fields, the logger records per-iteration diagnostics
+convergence fields, the logger records per-iteration test metrics
 (residuals, multiplier bounds, biactive counts, regime labels),
 phase-level timing splits, solver fallback flags, best-point tracking,
 and failure metadata. All reported times in this section are

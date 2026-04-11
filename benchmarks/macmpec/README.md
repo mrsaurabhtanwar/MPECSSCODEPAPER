@@ -21,12 +21,13 @@ These problems come from many different areas, including:
 
 ## How to use it
 
-If you want to run these problems in MPECSS, make sure you have extracted the `benchmarks.zip` file into the `benchmarks/` folder.
+The supported benchmark path is the Kaggle notebook:
 
-You can then run the entire suite with:
-```bash
-mpecss-macmpec --workers 4
+```text
+kaggle_setup/MPECSS_Kaggle_MacMPEC.ipynb
 ```
+
+It runs the suite through `kaggle_setup/resumable_benchmark.py` and saves artifacts to `/kaggle/working/outputs`.
 
 ## Credits
 

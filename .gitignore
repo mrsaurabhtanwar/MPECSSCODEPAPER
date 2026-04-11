@@ -1,18 +1,3 @@
-# --- Environments ---
-venv/
-.venv/
-venv_linux/
-env/
-ENV/
-bin/
-lib/
-share/
-Include/
-pyvenv.cfg
-.workspace-instructions.md
-.github/copilot-instructions.md
-.claude/
-
 # --- Python Caches & Artifacts ---
 __pycache__/
 *.py[cod]
@@ -39,7 +24,6 @@ wheels/
 .idea/
 *.swp
 *.swo
-*.code-workspace
 
 # --- Testing and Logs ---
 .pytest_cache/

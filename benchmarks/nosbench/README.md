@@ -26,12 +26,16 @@ If 603 problems are too many for a quick test, we recommend these subsets:
 
 ## How to use it
 
-Ensure you have extracted the `benchmarks.zip` data.
+The supported benchmark path is the four Kaggle notebooks:
 
-Run the entire suite with:
-```bash
-mpecss-nosbench --workers 4
+```text
+kaggle_setup/MPECSS_Kaggle_NosBench_Group1.ipynb
+kaggle_setup/MPECSS_Kaggle_NosBench_Group2.ipynb
+kaggle_setup/MPECSS_Kaggle_NosBench_Group3.ipynb
+kaggle_setup/MPECSS_Kaggle_NosBench_Group4.ipynb
 ```
+
+Each notebook runs one deterministic split through `kaggle_setup/resumable_benchmark.py` and writes artifacts to `/kaggle/working/outputs`.
 
 ## Credits
 

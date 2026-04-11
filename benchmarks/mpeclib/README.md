@@ -21,12 +21,13 @@ These problems come from real-world applications like:
 
 ## How to use it
 
-To run these problems in MPECSS, ensure you have the `benchmarks.zip` data extracted.
+The supported benchmark path is the Kaggle notebook:
 
-Run the entire suite with:
-```bash
-mpecss-mpeclib --workers 4
+```text
+kaggle_setup/MPECSS_Kaggle_MPECLib.ipynb
 ```
+
+It runs the suite through `kaggle_setup/resumable_benchmark.py` and saves artifacts to `/kaggle/working/outputs`.
 
 ## Credits
 

@@ -2,7 +2,7 @@
 """
 Kaggle-friendly resumable benchmark wrapper.
 
-Thin wrapper over the real benchmark runners in scripts/run_*_benchmark.py.
+Thin wrapper over mpecss.helpers.benchmark_utils.run_benchmark_main.
 Adds Kaggle-specific features:
   --resume-latest   Find the most recent CSV for this dataset and resume from it
   --summary-only    Print a progress summary without running any problems
@@ -121,6 +121,12 @@ def main() -> int:
     parser.add_argument("--sort-by-size", action="store_true")
     parser.add_argument("--shuffle", action="store_true", default=True)
     parser.add_argument("--no-shuffle", dest="shuffle", action="store_false")
+    parser.add_argument(
+        "--solver-params-json",
+        type=str,
+        default=None,
+        help="JSON object with solver-parameter overrides passed through to the benchmark runner.",
+    )
     parser.add_argument("--path", type=str, default=None,
                         help="Override the benchmark JSON directory path.")
     parser.add_argument("--problem-list", type=str, default=None,
@@ -136,8 +142,7 @@ def main() -> int:
     parser.add_argument("--bundle-output", action="store_true",
                         help="Create a zip archive of the output directory after the run.")
     parser.add_argument("--output-dir", type=str, default=None,
-                        help="Directory to save results. Defaults to <repo-dir>/results. "
-                             "On Kaggle, use /kaggle/working/outputs to ensure results persist.")
+                        help="Directory to save results. Defaults to /kaggle/working/outputs when available.")
 
     args = parser.parse_args()
 
@@ -181,9 +186,10 @@ def main() -> int:
     }
 
     config = DATASET_CONFIG[args.dataset]
-    # Use --output-dir if provided, otherwise default to <repo>/results
     if args.output_dir:
         results_dir = args.output_dir
+    elif os.path.isdir("/kaggle/working"):
+        results_dir = "/kaggle/working/outputs"
     else:
         results_dir = os.path.join(repo_dir, "results")
     os.makedirs(results_dir, exist_ok=True)
@@ -219,7 +225,7 @@ def main() -> int:
         from mpecss.helpers.benchmark_utils import run_benchmark_main
     except ImportError as e:
         print(f"[ERROR] Could not import mpecss: {e}")
-        print("Make sure mpecss is installed: pip install -e .")
+        print("Make sure the cloned repository is on sys.path and the notebook install cell completed.")
         return 1
 
     # ── Build sys.argv for run_benchmark_main ─────────────────────────────
@@ -227,40 +233,31 @@ def main() -> int:
     # via sys.argv before calling it.
     benchmark_path = args.path or config["default_path"]
 
-    # Smart path resolution: if the provided path doesn't exist, try alternatives
+    # Smart path resolution: if the provided path doesn't exist, try Kaggle dataset mounts.
     if benchmark_path and not os.path.isdir(benchmark_path):
         found_path = None
 
-        # Try 1: Search for the benchmark folder in /kaggle/input (handles varying mount paths)
-        if "/kaggle/" in benchmark_path or not os.path.exists("/kaggle"):
+        if os.path.isdir("/kaggle/input"):
             # Extract the benchmark-relative part (e.g., "nosbench/nosbench-json")
             parts = benchmark_path.split("/benchmarks/", 1)
             if len(parts) == 2:
                 bench_relative = parts[1]  # e.g., "nosbench/nosbench-json"
 
                 # On Kaggle: search for the actual path (handles datasets/username/... structure)
-                if os.path.isdir("/kaggle/input"):
-                    import subprocess
-                    result = subprocess.run(
-                        ["find", "/kaggle/input", "-type", "d", "-path", f"*/benchmarks/{bench_relative}"],
-                        capture_output=True, text=True, timeout=30
-                    )
-                    if result.returncode == 0 and result.stdout.strip():
-                        found_path = result.stdout.strip().split('\n')[0]
-                        logger.info(f"Found Kaggle benchmark path: {found_path}")
-
-                # Local fallback: try repo_dir/benchmarks/...
-                if not found_path:
-                    local_path = os.path.join(repo_dir, "benchmarks", bench_relative)
-                    if os.path.isdir(local_path):
-                        found_path = local_path
-                        logger.info(f"Using local benchmark path: {found_path}")
+                import subprocess
+                result = subprocess.run(
+                    ["find", "/kaggle/input", "-type", "d", "-path", f"*/benchmarks/{bench_relative}"],
+                    capture_output=True, text=True, timeout=30
+                )
+                if result.returncode == 0 and result.stdout.strip():
+                    found_path = result.stdout.strip().split('\n')[0]
+                    logger.info(f"Found Kaggle benchmark path: {found_path}")
 
         if found_path:
             benchmark_path = found_path
         else:
             logger.warning(f"Benchmark path not found: {benchmark_path}")
-            logger.warning(f"Tried searching in /kaggle/input and {repo_dir}/benchmarks/")
+            logger.warning("Tried searching Kaggle dataset mounts under /kaggle/input.")
 
     injected_args = [
         "resumable_benchmark",  # argv[0]
@@ -285,6 +282,8 @@ def main() -> int:
         injected_args.append("--shuffle")
     else:
         injected_args.append("--no-shuffle")
+    if args.solver_params_json:
+        injected_args.extend(["--solver-params-json", args.solver_params_json])
     if args.retry_failed:
         injected_args.append("--retry-failed")
     if args.problem_list:

@@ -43,13 +43,6 @@ Changelog = "https://github.com/mrsaurabhtanwar/MPECSS/blob/main/CHANGELOG.md"
 [project.optional-dependencies]
 test = ["pytest>=7.4"]
 
-[project.scripts]
-mpecss-preflight = "scripts.preflight_checks:main"
-mpecss-all-benchmarks = "scripts.run_all_benchmarks:main"
-mpecss-macmpec = "scripts.run_macmpec_benchmark:main"
-mpecss-mpeclib = "scripts.run_mpeclib_benchmark:main"
-mpecss-nosbench = "scripts.run_nosbench_benchmark:main"
-
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["mpecss*", "scripts*"]
+include = ["mpecss*"]

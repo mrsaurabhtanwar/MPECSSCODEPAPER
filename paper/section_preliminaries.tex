@@ -121,11 +121,13 @@ complementary slackness.
 
 \begin{definition}[MPEC stationarity concepts \cite{ScheelScholtes2000,LuoPangRalph1996,Ye2005,FlegelKanzow2005}]\label{def:mpec_stationarity}
 A feasible point $x^*$ is called
-\emph{W-stationary} if there exist multipliers satisfying \eqref{eq:stationarity_system} with no further sign restrictions on $\gamma^G_\ell, \gamma^H_\ell$ for $\ell \in \mathcal{I}_{00}(x^*)$;
-\emph{C-stationary} if it is W-stationary and $\gamma^G_\ell \cdot \gamma^H_\ell \geq 0$ for all $\ell \in \mathcal{I}_{00}(x^*)$;
-\emph{M-stationary} if it is W-stationary and for each $\ell \in \mathcal{I}_{00}(x^*)$, either ($\gamma^G_\ell > 0, \gamma^H_\ell > 0$) or $\gamma^G_\ell \cdot \gamma^H_\ell = 0$;
-\emph{S-stationary} if it is W-stationary and $\gamma^G_\ell \geq 0, \gamma^H_\ell \geq 0$ for all $\ell \in \mathcal{I}_{00}(x^*)$;
-\emph{B-stationary} if $\nabla f(x^*)^\top d \geq 0$ for all $d \in T_{\mathcal{F}}(x^*)$, where the \emph{Bouligand tangent cone} is $T_{\mathcal{F}}(x^*) = \{d \in \mathbb{R}^n : \exists x^k \in \mathcal{F}, x^k \to x^*, t_k \downarrow 0 \text{ s.t. } \frac{x^k - x^*}{t_k} \to d\}$.
+\begin{itemize}
+  \item[-] \emph{W-stationary:} if there exist multipliers satisfying \eqref{eq:stationarity_system} with no further sign restrictions on $\gamma^G_\ell, \gamma^H_\ell$ for $\ell \in \mathcal{I}_{00}(x^*)$;
+  \item[-] \emph{C-stationary:} if it is W-stationary and $\gamma^G_\ell \cdot \gamma^H_\ell \geq 0$ for all $\ell \in \mathcal{I}_{00}(x^*)$;
+  \item[-] \emph{M-stationary:} if it is W-stationary and for each $\ell \in \mathcal{I}_{00}(x^*)$, either ($\gamma^G_\ell > 0, \gamma^H_\ell > 0$) or $\gamma^G_\ell \cdot \gamma^H_\ell = 0$;
+  \item[-] \emph{S-stationary:} if it is W-stationary and $\gamma^G_\ell \geq 0, \gamma^H_\ell \geq 0$ for all $\ell \in \mathcal{I}_{00}(x^*)$;
+  \item[-] \emph{B-stationary:} if $\nabla f(x^*)^\top d \geq 0$ for all $d \in T_{\mathcal{F}}(x^*)$, where the \emph{Bouligand tangent cone} is $T_{\mathcal{F}}(x^*) = \{d \in \mathbb{R}^n : \exists x^k \in \mathcal{F}, x^k \to x^*, t_k \downarrow 0 \text{ s.t. } \frac{x^k - x^*}{t_k} \to d\}$.
+\end{itemize}
 \end{definition}
 
 The strict hierarchy among multiplier-based notions is established in~\citep{ScheelScholtes2000,Ye2005,FlegelKanzow2005}:

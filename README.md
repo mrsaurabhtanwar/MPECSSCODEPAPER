@@ -19,23 +19,22 @@ Imagine you have a difficult math problem where you need to find the best balanc
 
 ---
 
-## Quick Installation
+## Official Benchmark Workflow
 
-### 1. For Most Users (Easy Mode)
-Simply install it like any other Python package:
+Official benchmark runs are maintained through the Kaggle notebooks in `kaggle_setup/`.
 
-```bash
-pip install mpecss
-```
+### 1. Open Kaggle
+Create a new notebook and add the dataset `mrsaurabhtanwar/mpecss-benchmarks`.
 
-### 2. For Researchers (Developer Mode)
-If you want to help develop the code or see exactly how it works:
+### 2. Import the Notebook You Need
+- `kaggle_setup/MPECSS_Kaggle_MPECLib.ipynb`
+- `kaggle_setup/MPECSS_Kaggle_MacMPEC.ipynb`
+- `kaggle_setup/MPECSS_Kaggle_NosBench_Group1.ipynb`
+- `kaggle_setup/MPECSS_Kaggle_NosBench_Group2.ipynb`
+- `kaggle_setup/MPECSS_Kaggle_NosBench_Group3.ipynb`
+- `kaggle_setup/MPECSS_Kaggle_NosBench_Group4.ipynb`
 
-```bash
-git clone https://github.com/mrsaurabhtanwar/MPECSS.git
-cd MPECSS
-pip install -e .
-```
+The Kaggle-specific guide is in `kaggle_setup/README.md` and `kaggle_setup/QUICK_START.md`.
 
 ---
 
@@ -66,33 +65,15 @@ print(f"Result: {result['f_final']:.6f}")
 
 MPECSS comes with a massive test suite of 886 problems to prove it works.
 
-### Setup Benchmark Data
-1. Download `benchmarks.zip` from our [GitHub Releases](https://github.com/mrsaurabhtanwar/MPECSS/releases).
-2. Extract it into your project folder. **Do not rename the folder.**
-3. On Kaggle, the notebook also creates `/kaggle/working/outputs.zip` for download.
+### Supported Path
+Use the Kaggle notebooks under `kaggle_setup/`. Each notebook:
 
-### Run the Tests
-We provide simple commands to run all tests at once:
+- clones the pinned repository revision
+- runs `scripts/preflight_checks.py`
+- launches `kaggle_setup/resumable_benchmark.py`
+- writes outputs to `/kaggle/working/outputs`
 
-```bash
-# Run all three suites sequentially (safe default: 1 worker each)
-mpecss-all-benchmarks --workers 1
-
-# Run the MacMPEC suite (191 problems)
-mpecss-macmpec --workers 4
-
-# Run the MPECLib suite (92 problems)
-mpecss-mpeclib --workers 4
-
-# Run the NOSBENCH suite (603 problems)
-mpecss-nosbench --workers 4
-```
-
-Before large benchmark runs, use:
-
-```bash
-mpecss-preflight
-```
+NosBench is split across four Kaggle notebooks so the full 603-problem run fits within Kaggle's time limits.
 
 ---
 
@@ -113,7 +94,7 @@ mpecss-preflight
   - `phase_2/`: The main solving logic.
   - `phase_3/`: Polishing and verifying the results.
 - **`benchmarks/`**: The massive collection of test problems.
-- **`scripts/`**: Useful tools for running large-scale tests.
+- **`kaggle_setup/`**: Kaggle notebooks and helper scripts for official benchmark runs.
 - **`results/`**: Where the solver saves its answers.
 
 ---

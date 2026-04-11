@@ -961,6 +961,7 @@ def run_single_problem_internal(
     run_id: str,
     wall_timeout: Optional[float] = None,
     problem_idx: int = 0,
+    custom_params: Optional[Dict[str, Any]] = None,
 ):
     """Core logic to run a single problem and return the wide data row.
 
@@ -1030,6 +1031,12 @@ def run_single_problem_internal(
         "restoration_stag_window": 8,
         "progress_callback": audit.progress_callback,
     }
+    if custom_params:
+        for key, value in custom_params.items():
+            if key == "progress_callback":
+                continue
+            if value is not None:
+                params[key] = value
     if wall_timeout is not None:
         # Reserve 80% of the wall timeout for Phase I+II (run_mpecss measures its
         # own clock from its own total_start, so Phase I is inside that budget).
@@ -1447,8 +1454,7 @@ def run_benchmark_main(loader_fn: Callable[[str], Dict[str, Any]], dataset_tag: 
                         help="Per-problem wall-clock timeout in seconds (default: 3600). "
                              "Set 0 to disable.")
     parser.add_argument("--mem-limit-gb", type=float, default=None,
-                        help="Soft per-worker RAM cap in GB (Linux/WSL only). "
-                             "Has NO effect on Windows native — omit it there. "
+                        help="Soft per-worker RAM cap in GB (Linux-based Kaggle runtimes only). "
                              "When omitted (default), every problem is free to use "
                              "as much memory as the OS will allocate; each problem "
                              "runs in its own isolated process so one OOM-killed "
@@ -1469,10 +1475,23 @@ def run_benchmark_main(loader_fn: Callable[[str], Dict[str, Any]], dataset_tag: 
                         help="Limit to first N problems (useful for quick official test runs, e.g., --num-problems 10)")
     parser.add_argument("--resume",       type=str,   help="Path to existing CSV results to resume from")
     parser.add_argument("--retry-failed", action="store_true", help="When resuming, ignore past OOM/timeout/crash results and re-run them")
+    parser.add_argument("--solver-params-json", type=str, default=None,
+                        help="JSON object with solver-parameter overrides (for example: '{\"t0\": 0.1, \"adaptive_t\": false}')")
     parser.add_argument("--output-dir",   type=str,   default=None,
                         help="Directory to save results (default: ./results). "
-                             "On Kaggle, use /kaggle/working/outputs to ensure results persist.")
+                             "For Kaggle runs, prefer /kaggle/working/outputs so artifacts persist.")
     args = parser.parse_args()
+
+    custom_solver_params: Dict[str, Any] = {}
+    if args.solver_params_json:
+        try:
+            parsed_params = json.loads(args.solver_params_json)
+        except Exception as exc:
+            raise ValueError(f"Invalid --solver-params-json value: {exc}") from exc
+        if not isinstance(parsed_params, dict):
+            raise ValueError("--solver-params-json must decode to a JSON object.")
+        custom_solver_params = parsed_params
+    args.solver_params = custom_solver_params
 
     # Normalise timeout: treat 0 as None (no limit)
     if args.timeout is not None and args.timeout <= 0:
@@ -1580,7 +1599,7 @@ def run_benchmark_main(loader_fn: Callable[[str], Dict[str, Any]], dataset_tag: 
         avail_gb = vm.available / 1024**3
         total_gb = vm.total / 1024**3
         cap_note = (
-            f"per-worker cap: {args.mem_limit_gb:.1f} GB (Linux/WSL only)"
+            f"per-worker cap: {args.mem_limit_gb:.1f} GB (Linux-based runtime only)"
             if getattr(args, "mem_limit_gb", None)
             else "no per-problem cap — each problem may use all available memory"
         )
@@ -1612,7 +1631,8 @@ def run_benchmark_main(loader_fn: Callable[[str], Dict[str, Any]], dataset_tag: 
     )
 
     all_results = _run_parallel_isolated(
-        problem_files, loader_fn, args, results_dir, dataset_tag, summary_path, timestamp
+        problem_files, loader_fn, args, results_dir, dataset_tag, summary_path, timestamp,
+        custom_params=custom_solver_params,
     )
 
     _write_run_env(
@@ -1664,6 +1684,8 @@ def _write_run_env(
             "num_problems": getattr(args, "num_problems", None),
             "resume":       getattr(args, "resume", None),
             "retry_failed": getattr(args, "retry_failed", False),
+            "solver_params_json": getattr(args, "solver_params_json", None),
+            "solver_params": getattr(args, "solver_params", None),
         },
         "reproducibility": {
             "effective_external_timeout_s": args.timeout,
@@ -1833,7 +1855,8 @@ def _write_run_env(
 
 
 def _worker_process(problem_file, loader_fn, args_path, seed, tag, results_dir,
-                    save_logs, dataset_tag, run_id, timeout, mem_limit_gb, result_queue):
+                    save_logs, dataset_tag, run_id, timeout, mem_limit_gb, result_queue,
+                    custom_params=None):
     """
     The "Solo Runner": Executing one specific problem.
 
@@ -1876,7 +1899,8 @@ def _worker_process(problem_file, loader_fn, args_path, seed, tag, results_dir,
         res = run_single_problem_internal(
             loader_fn, os.path.join(args_path, problem_file),
             seed, tag, results_dir, save_logs, dataset_tag, run_id, timeout,
-            problem_idx=0  # Worker process runs one problem at a time
+            problem_idx=0,  # Worker process runs one problem at a time
+            custom_params=custom_params,
         )
     except MemoryError:
         res = _build_failure_result(
@@ -1940,7 +1964,7 @@ def _worker_process(problem_file, loader_fn, args_path, seed, tag, results_dir,
             pass  # If this also fails the monitor loop will detect exit code != 0
 
 
-def _run_parallel_isolated(problem_files, loader_fn, args, results_dir, dataset_tag, summary_path, run_id):
+def _run_parallel_isolated(problem_files, loader_fn, args, results_dir, dataset_tag, summary_path, run_id, custom_params=None):
     """
     The "Race Coordinator": Managing multiple runners at once.
 
@@ -1995,7 +2019,7 @@ def _run_parallel_isolated(problem_files, loader_fn, args, results_dir, dataset_
                 target=_worker_process,
                 args=(f, loader_fn, args.path, args.seed, args.tag,
                       results_dir, args.save_logs, dataset_tag, run_id, args.timeout,
-                      getattr(args, "mem_limit_gb", None), result_queue),
+                      getattr(args, "mem_limit_gb", None), result_queue, custom_params),
             )
             p.start()
             active_procs[f] = (p, time.time())

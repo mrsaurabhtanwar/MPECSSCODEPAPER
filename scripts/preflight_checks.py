@@ -1,20 +1,18 @@
 #!/usr/bin/env python3
 """
-Pre-flight checks for MPECSS benchmark runs.
+Pre-flight checks for the Kaggle benchmark workflow.
 
 Verifies:
-  1. Python environment and virtualenv status
+  1. Python runtime and whether the current environment looks like Kaggle
   2. All required dependencies (CasADi, IPOPT, MUMPS, etc.)
-  3. WSL environment detection
-  4. Disk space availability
-  5. Existing results and potential conflicts
-  6. System memory and CPU cores
-  7. Problem data integrity (JSON loading)
+  3. Disk space availability for benchmark artifacts
+  4. Existing output files and potential resume conflicts
+  5. System memory and CPU cores
+  6. Problem data integrity (JSON loading)
 """
 
 import os
 import sys
-import json
 import platform
 import shutil
 import logging
@@ -43,31 +41,55 @@ def _fail() -> CheckResult:
     return CheckResult(ok=False, advisory=False)
 
 
+def _is_kaggle_runtime() -> bool:
+    return Path('/kaggle/working').exists() and Path('/kaggle/input').exists()
+
+
+def _default_output_dir() -> Path:
+    if Path('/kaggle/working').exists():
+        return Path('/kaggle/working/outputs')
+    return Path('results')
+
+
+def _resolve_dataset_dir(relative_dir: str) -> Path:
+    repo_path = Path(relative_dir)
+    if repo_path.exists():
+        return repo_path
+
+    kaggle_input = Path('/kaggle/input')
+    if kaggle_input.exists():
+        pattern = f"**/{Path(relative_dir).as_posix()}"
+        for candidate in sorted(kaggle_input.glob(pattern)):
+            if candidate.is_dir():
+                return candidate
+
+    return repo_path
+
+
 def check_python_env():
-    """Check Python version and environment."""
+    """Check Python runtime and whether it matches the supported Kaggle flow."""
     logger.info("=" * 70)
-    logger.info("1. PYTHON ENVIRONMENT")
+    logger.info("1. RUNTIME")
     logger.info("=" * 70)
     
     version = platform.python_version()
     impl = platform.python_implementation()
     executable = sys.executable
     prefix = sys.prefix
+    on_kaggle = _is_kaggle_runtime()
     
     logger.info(f"  Python version  : {version} ({impl})")
     logger.info(f"  Executable      : {executable}")
     logger.info(f"  Installation dir: {prefix}")
-    
-    # Check if in virtualenv
-    in_venv = hasattr(sys, 'real_prefix') or (
-        hasattr(sys, 'base_prefix') and sys.base_prefix != sys.prefix
-    )
-    logger.info(f"  In virtualenv?  : {'✓ YES' if in_venv else '⚠ NO (recommend using venv)'}")
-    
-    if not in_venv:
-        logger.warning("Running outside virtualenv may cause package conflicts.")
-    
-    return _pass()
+    logger.info(f"  Kaggle runtime? : {'✓ YES' if on_kaggle else '⚠ NO'}")
+
+    if on_kaggle:
+        logger.info("  Working area    : /kaggle/working")
+        logger.info("  Input datasets  : /kaggle/input")
+        return _pass()
+
+    logger.warning("Official benchmark automation is maintained for the Kaggle notebooks in kaggle_setup/.")
+    return _pass(advisory=True)
 
 
 def check_dependencies():
@@ -130,45 +152,18 @@ def check_dependencies():
     except Exception as e:
         logger.info(f"  ℹ qpOASES not available - using IPOPT for all problems (optional)")
         logger.info(f"    Reason: {str(e).split(':')[-1].strip() if ':' in str(e) else str(e)[:80]}")
-        logger.info(f"    See QPOASES_INSTALLATION.md for installation instructions")
+        logger.info(f"    The solver will fall back to IPOPT-only execution.")
     
     return _pass() if all_ok else _fail()
-
-
-def check_wsl():
-    """Detect WSL environment."""
-    logger.info("\n" + "=" * 70)
-    logger.info("3. WSL DETECTION")
-    logger.info("=" * 70)
-    
-    system = platform.system()
-    logger.info(f"  Operating System: {system}")
-    
-    is_wsl = False
-    if system == 'Linux':
-        try:
-            with open('/proc/version', 'r') as f:
-                content = f.read().lower()
-                is_wsl = 'wsl' in content or 'microsoft' in content
-        except:
-            pass
-    
-    logger.info(f"  WSL environment?: {'✓ YES' if is_wsl else 'Windows/Native Linux/Other'}")
-    
-    if system == 'Windows':
-        logger.info("  ℹ Running on Windows. For official runs, WSL2 is recommended.")
-    
-    return _pass(advisory=not is_wsl)
 
 
 def check_disk_space():
     """Check available disk space."""
     logger.info("\n" + "=" * 70)
-    logger.info("4. DISK SPACE")
+    logger.info("3. DISK SPACE")
     logger.info("=" * 70)
     
-    # Find project root
-    project_root = Path(__file__).parent.parent
+    project_root = Path('/kaggle/working') if Path('/kaggle/working').exists() else Path(__file__).parent.parent
     
     try:
         stat = shutil.disk_usage(str(project_root))
@@ -192,15 +187,15 @@ def check_disk_space():
 
 
 def check_results_dir():
-    """Check existing results and potential conflicts."""
+    """Check existing output files and potential conflicts."""
     logger.info("\n" + "=" * 70)
-    logger.info("5. EXISTING RESULTS")
+    logger.info("4. OUTPUT DIRECTORY")
     logger.info("=" * 70)
     
-    results_dir = Path('results')
+    results_dir = _default_output_dir()
     if not results_dir.exists():
         results_dir.mkdir(parents=True)
-        logger.info(f"  Created results directory: {results_dir}")
+        logger.info(f"  Created output directory: {results_dir}")
     
     # Count existing results
     mpeclib_csvs = list(results_dir.glob('mpeclib_full_*.csv'))
@@ -229,7 +224,7 @@ def check_results_dir():
 def check_system_resources():
     """Check available system memory and CPU cores."""
     logger.info("\n" + "=" * 70)
-    logger.info("6. SYSTEM RESOURCES")
+    logger.info("5. SYSTEM RESOURCES")
     logger.info("=" * 70)
     
     try:
@@ -251,7 +246,7 @@ def check_system_resources():
         logger.info(f"  Physical cores  : {physical}")
         
         # Recommendation
-        recommended_workers = min(physical, max(1, int(total_gb / 2)))
+        recommended_workers = max(1, min(physical or logical or 1, int(total_gb / 2) if total_gb >= 2 else 1))
         logger.info(f"  Recommended workers: {recommended_workers} (for ~2GB per worker)")
         
         if total_gb < 4:
@@ -295,7 +290,7 @@ def _validate_with_loader(dataset_name: str, directory: Path, loader_fn, first_l
 def check_problem_data():
     """Check that problem JSON files can be loaded."""
     logger.info("\n" + "=" * 70)
-    logger.info("7. PROBLEM DATA INTEGRITY")
+    logger.info("6. PROBLEM DATA INTEGRITY")
     logger.info("=" * 70)
     
     issues = []
@@ -304,9 +299,9 @@ def check_problem_data():
     from mpecss.helpers.loaders.macmpec_loader import load_macmpec
     from mpecss.helpers.loaders.nosbench_loader import load_nosbench
 
-    issues.extend(_validate_with_loader("MPECLib", Path('benchmarks/mpeclib/mpeclib-json'), load_mpeclib))
-    issues.extend(_validate_with_loader("MacMPEC", Path('benchmarks/macmpec/macmpec-json'), load_macmpec))
-    issues.extend(_validate_with_loader("NOSBench", Path('benchmarks/nosbench/nosbench-json'), load_nosbench))
+    issues.extend(_validate_with_loader("MPECLib", _resolve_dataset_dir('benchmarks/mpeclib/mpeclib-json'), load_mpeclib))
+    issues.extend(_validate_with_loader("MacMPEC", _resolve_dataset_dir('benchmarks/macmpec/macmpec-json'), load_macmpec))
+    issues.extend(_validate_with_loader("NOSBench", _resolve_dataset_dir('benchmarks/nosbench/nosbench-json'), load_nosbench))
     
     if issues:
         for issue in issues:
@@ -322,16 +317,15 @@ def main():
     logger.info("\n")
     logger.info("╔" + "=" * 68 + "╗")
     logger.info("║" + " " * 68 + "║")
-    logger.info("║" + "  MPEC-SS BENCHMARK PRE-FLIGHT CHECKS".center(68) + "║")
+    logger.info("║" + "  MPEC-SS KAGGLE PRE-FLIGHT CHECKS".center(68) + "║")
     logger.info("║" + " " * 68 + "║")
     logger.info("╚" + "=" * 68 + "╝")
     
     checks = [
-        ("Python environment", check_python_env),
+        ("Runtime", check_python_env),
         ("Dependencies", check_dependencies),
-        ("WSL environment", check_wsl),
         ("Disk space", check_disk_space),
-        ("Results directory", check_results_dir),
+        ("Output directory", check_results_dir),
         ("System resources", check_system_resources),
         ("Problem data", check_problem_data),
     ]

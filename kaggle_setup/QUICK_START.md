@@ -25,9 +25,13 @@ Choose the notebook for your benchmark:
 |-----------|-------------------|
 | MPECLib (92 problems) | `MPECSS_Kaggle_MPECLib.ipynb` |
 | MacMPEC (191 problems) | `MPECSS_Kaggle_MacMPEC.ipynb` |
-| NosBench Group 1 (201 problems) | `MPECSS_Kaggle_NosBench_Group1.ipynb` |
-| NosBench Group 2 (201 problems) | `MPECSS_Kaggle_NosBench_Group2.ipynb` |
-| NosBench Group 3 (201 problems) | `MPECSS_Kaggle_NosBench_Group3.ipynb` |
+| MacMPEC ablation study | `MPECSS_Kaggle_MacMPEC_Ablation.ipynb` |
+| MacMPEC seed robustness | `MPECSS_Kaggle_MacMPEC_SeedRobustness.ipynb` |
+| MacMPEC parameter sensitivity | `MPECSS_Kaggle_MacMPEC_ParamSensitivity.ipynb` |
+| NosBench Group 1 (151 problems) | `MPECSS_Kaggle_NosBench_Group1.ipynb` |
+| NosBench Group 2 (151 problems) | `MPECSS_Kaggle_NosBench_Group2.ipynb` |
+| NosBench Group 3 (151 problems) | `MPECSS_Kaggle_NosBench_Group3.ipynb` |
+| NosBench Group 4 (150 problems) | `MPECSS_Kaggle_NosBench_Group4.ipynb` |
 
 **To upload:**
 1. Click **"File"** → **"Import Notebook"**
@@ -47,6 +51,10 @@ Choose the notebook for your benchmark:
    - Run all problems
    - Save results
 
+## MacMPEC Study Notebooks
+
+The three study notebooks use the same Kaggle setup as the main MacMPEC benchmark, but default to a 1800 s per-problem timeout and write into separate output folders so each study can be resumed independently.
+
 ## Step 7: Download Results
 
 After completion:
@@ -58,17 +66,18 @@ After completion:
 
 ## Running NosBench (All 603 Problems)
 
-NosBench is split into 3 groups to fit Kaggle's 12-hour limit.
+NosBench is split into 4 groups (151/151/151/150 problems) to fit Kaggle's 12-hour limit.
 
 ### Option A: Run Sequentially (1 account)
 1. Run Group 1, download results
 2. Run Group 2, download results  
 3. Run Group 3, download results
-4. Merge CSVs locally
+4. Run Group 4, download results
+5. Merge CSVs locally
 
-### Option B: Run in Parallel (3 accounts)
-1. Open 3 Kaggle notebooks (can use different accounts or browser tabs)
-2. Run Group 1, 2, and 3 simultaneously
+### Option B: Run in Parallel (4 accounts)
+1. Open 4 Kaggle notebooks (can use different accounts or browser tabs)
+2. Run Group 1, 2, 3, and 4 simultaneously
 3. Download all results
 4. Merge CSVs locally
 

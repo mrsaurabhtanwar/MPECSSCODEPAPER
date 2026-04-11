@@ -6,7 +6,7 @@ In this section, we present the MPECSS algorithm, which combines Scholtes's regu
 \label{sec:scholtes}
 As discussed in Section~\ref{sec:intro}, the main source of difficulty in MPECs~\eqref{eq:general_mpec} is the complementarity conditions, which cause standard constraint qualifications to fail. In 2001, Scholtes~\cite{Scholtes2001} proposed a regularization technique, which relaxed the complementarity constraints $G_\ell(x) \cdot H_\ell(x) = 0$ to $G_\ell(x) \cdot H_\ell(x) \leq t_k$ for a sequence of positive parameters $t_k \to 0$ indexed by outer iteration $k$. This regularization transforms the original MPEC into a sequence of smooth NLP subproblems that can be solved using standard NLP solvers~\cite{FletcherLeyffer2004}. The key idea is that as $t_k$ approaches zero, the solutions of the regularized problems approach a stationary point of the original MPEC.
 
-After replacing the complementarity constraints with their regularized counterparts, the regularized problem $\text{NLP}(t_k)$ with parameter $t_k$ at outer iteration $k$ can be formulated as~\cite{Scholtes2001}:
+After replacing the complementarity constraints with their regularized approximations, the regularized problem $\text{NLP}(t_k)$ with parameter $t_k$ at outer iteration $k$ can be formulated as~\cite{Scholtes2001}:
 \begin{equation}
 \begin{aligned}
   \text{NLP}(t_k): \quad & \min_{x \in \mathbb{R}^n} \quad && f(x) \\
@@ -57,8 +57,8 @@ Scholtes~\cite{Scholtes2001} proved that limit points of the regularized sequenc
  numerically robust and fills the stationarity gap by combining the regularization path
  with an \emph{adaptive path-following strategy} guided by
 the \emph{multiplier sign test} (Section~\ref{sec:stationarity}). At each
-outer iteration, the sign test checks the $G$- and $H$-multipliers of
-$\text{NLP}(t_k)$ to confirm (or rule out) S-stationarity of the
+outer iteration, the sign test checks the $G$-multipliers and $H$-multipliers of
+$\text{NLP}(t_k)$ to confirm (or exclude) S-stationarity of the
 current iterate and uses this information to adjust $\{t_k\}$
 accordingly. The full description of this adaptive mechanism is given
 in Sections~3.3--3.4. Notably, S-stationarity implies B-stationarity by
@@ -67,12 +67,12 @@ MPEC-LICQ constraint qualification, S-stationarity and B-stationarity
 are equivalent. In the implementation, however, a sign-test pass is
 carried into Phase~III, where B-stationarity is certified either by
 LICQ equivalence or by the LPEC check when LICQ is absent or
-inconclusive.
+fails to hold.
 
 \subsection{Phase~I: Feasibility}
 \label{sec:feasibility}
 
-The main MPECSS loop (Section~\ref{sec:adaptive_strategy}) requires a starting point that approximately satisfies the complementarity conditions $G_\ell(x)^{\top}\, H_\ell(x) \approx 0$ with $G_\ell(x) \geq 0$ and $H_\ell(x) \geq 0$. A user-provided initial point~$x_0$ may be far from complementarity-feasible (i.e., the products $G_\ell(x_0)^{\top}\, H_\ell(x_0)$ may be large). To address this, MPECSS begins with an optional \emph{feasibility phase} (Phase~I), following standard MPEC feasibility preprocessing approaches~\cite{BaumruckerBiegler2008,NurkanovicLeyffer2025}, that finds a good starting point satisfying the complementarity conditions. Before solving, the initial point~$x_0$ is pushed into the strict interior of the variable bounds by a fraction $\nu = 0.1$, i.e., for each dimension~$i$ with finite bounds $[\ell_i, u_i]$, the starting value is clipped to $[\ell_i + \nu(u_i - \ell_i),\; u_i - \nu(u_i - \ell_i)]$. This \emph{interior push} avoids Jacobian singularities that interior-point methods can encounter when initialised exactly on variable bounds~\cite{WachterBiegler2006}.
+The main MPECSS loop (Section~\ref{sec:adaptive_strategy}) requires a starting point that approximately satisfies the complementarity conditions $G_\ell(x)^{\top}\, H_\ell(x) \approx 0$ with $G_\ell(x) \geq 0$ and $H_\ell(x) \geq 0$. A user-provided initial point~$x_0$ may be far from complementarity-feasible (i.e., the products $G_\ell(x_0)^{\top}\, H_\ell(x_0)$ may be large). To address this, MPECSS begins with an optional \emph{feasibility phase} (Phase~I), following standard MPEC feasibility preprocessing approaches~\cite{BaumruckerBiegler2008,NurkanovicLeyffer2025}, that finds a good starting point satisfying the complementarity conditions. Before solving, the initial point~$x_0$ is pushed into the strict interior of the variable bounds by a fraction $\nu = 0.1$, i.e., for each dimension~$i$ with finite bounds $[\ell_i, u_i]$, the starting value is clipped to $[\ell_i + \nu(u_i - \ell_i),\; u_i - \nu(u_i - \ell_i)]$. This \emph{interior push} avoids Jacobian singularities that interior-point methods can encounter when initialized exactly on variable bounds~\cite{WachterBiegler2006}.
 
 Phase~I then solves a sequence of up to three progressively more robust NLP formulations to find a complementarity-feasible point. The general structure minimizes a violation measure $\Theta(x)$ of the complementarity conditions, subject to the original MPEC feasibility constraints:
 \begin{equation}
@@ -85,73 +85,95 @@ Phase~I then solves a sequence of up to three progressively more robust NLP form
 \end{aligned}
 \label{eq:phase_i}
 \end{equation}
-The formulation of the objective $\Theta(x)$ is progressively adjusted in a cascade if the previous attempt fails to achieve a satisfactory complementarity residual ($r < 10^{-6}$). These attempts correspond to: (1) \emph{L2 product minimisation} $\Theta(x) = \sum_{\ell=1}^q \big(G_\ell(x) H_\ell(x)\big)^2$ to standardly push products to zero; (2) \emph{Smooth L1 minimisation} $\Theta(x) = \sum_{\ell=1}^q \sqrt{\big(G_\ell(x) H_\ell(x)\big)^2 + \epsilon}$ (with $\epsilon = 10^{-10}$) to provide a less aggressive gradient when ill-conditioned; and (3) an \emph{Epigraph formulation} which solves $\min_{x, \tau} \tau$ subject to the constraints in~\eqref{eq:phase_i} as well as $\big(G_\ell(x) H_\ell(x)\big)^2 \leq \tau$ for all $\ell = 1, \ldots, q$ and $\tau \geq 0$, yielding stable gradients on severely infeasible problems. In cases involving box-constrained complementaries, the formulation naturally aggregates both the lower complementarity pair $G_\ell(x) H_\ell(x)$ and the upper pair $G_\ell(x)(u_\ell - H_\ell(x))$ if a finite upper bound $u_\ell$ exists.
+The formulation of the objective $\Theta(x)$ is progressively adjusted in a cascade if the previous attempt fails to achieve a satisfactory complementarity residual ($r < 10^{-6}$). These attempts correspond to: (1) \emph{L2 product minimisation} $\Theta(x) = \sum_{\ell=1}^q \big(G_\ell(x) H_\ell(x)\big)^2$ to standardly push products to zero~\cite{NocedalWright2006}; (2) \emph{Smooth L1 minimisation} $\Theta(x) = \sum_{\ell=1}^q \sqrt{\big(G_\ell(x) H_\ell(x)\big)^2 + \epsilon}$ (with $\epsilon = 10^{-10}$) to provide a less aggressive gradient when ill-conditioned~\cite{Fischer1992,FacchineiPang2003}; and (3) an \emph{Epigraph formulation} which solves $\min_{x, \tau} \tau$ subject to the constraints in~\eqref{eq:phase_i} as well as $\big(G_\ell(x) H_\ell(x)\big)^2 \leq \tau$ for all $\ell = 1, \ldots, q$ and $\tau \geq 0$, yielding stable gradients on severely infeasible problems~\cite{RockafellarWets1998}. For box-constrained complementarity pairs, the formulation aggregates both the lower residual $G_\ell(x) H_\ell(x)$ and, when a finite upper bound $u_\ell$ is present, the upper-bound residual $G_\ell(x)(u_\ell - H_\ell(x))$.
 
 No regularization parameter appears in any of these formulations; each is a standard smooth NLP solved by IPOPT~\cite{WachterBiegler2006}. Upon convergence of any formulation, the resulting point $\bar{x}$ satisfies $G_\ell(\bar{x}) \cdot H_\ell(\bar{x}) \approx 0$ for all~$\ell$ and lies in the feasible region of the original constraints. This point is then used as the warm-start~$x^0$ for the main Scholtes outer loop.
 
-Three baseline safety mechanisms augment Phase~I's reliability. First,
-a \textit{structured multistart} deploys deterministic bound/midpoint
-candidates together with Gaussian-perturbed starts to improve robustness
-when the user-supplied initial point is poor. Second, a
-\textit{displacement guard} rejects candidates drifting excessively
-($\|\bar{x}^{(s)} - x_0\|_R \geq D_{\max}$) from the user-provided
-region to retain local relevance. Third, the implementation records the
-Phase~I objective values for test purposes, but the actual acceptance rule
-is driven by improved complementarity residual together with the
-displacement safeguard, rather than by a separate original-objective
-filter.
+Three baseline safety mechanisms enhance Phase~I's reliability. First,
+a \textit{structured multistart} samples deterministic lower-bound,
+upper-bound, and midpoint points together with Gaussian-perturbed
+starts whenever the best complementarity residual remains above
+$10^{-4}$. Second, a \textit{displacement guard} accepts a candidate
+only if its normalized displacement from the initial point is below a
+fixed limit of $50$, unless the residual is already below $10^{-6}$.
+Third, the implementation records Phase~I objective values for
+diagnostics, but the acceptance rule is driven by complementarity-residual
+improvement together with the displacement guard rather than by a
+separate original-objective filter.
 
-In practice, the solver may fail to find an initial search direction from the user-provided starting point, immediately reporting infeasibility. To improve startup robustness without changing the theoretical Scholtes framework~\cite{Scholtes2001}, MPECSS cycles through the three progressively more robust objective formulations described above (L2, smooth~L1, epigraph). Each formulation provides a different gradient landscape, and the sequence is designed so that when one formulation encounters numerical difficulties, the next one often succeeds. For very large problems ($n > 3000$), Phase~I is skipped entirely to avoid excessive computational cost; in this case, the user-provided starting point is passed directly to Phase~II.
-
-Algorithm~\ref{alg:phase1} summarizes the practical Phase~I procedure used to generate a reliable warm start for the adaptive outer loop.
-
-\begin{algorithm}[t]
+\begin{algorithm}[htbp]
 \caption{Phase~I Feasibility Bootstrap}
 \label{alg:phase1}
+\scriptsize
 \begin{algorithmic}[1]
-\Require Initial point $x_0$, bounds $\ell,u$, feasibility threshold $\eta_f$, displacement limit $D_{\max}$, interior fraction $\nu$
-\Ensure Warm-start point $x^0$ for Phase~II
-\If{$n > 3000$}
-  \State \Return $x^0 \gets x_0$ \Comment{Skip Phase~I for very large problems}
+\Require Problem data $P$ with complementarity functions and bounds, initial point $x_0$, solver options, maximum attempts $a_{\max}$, restart budget $r_{\max}$, seed $s$
+\Ensure Warm-start point $x^0$ and Phase~I metrics
+\State $n_x \gets \dim(x_0)$
+\State $r_0 \gets \mathrm{comp\_res}(x_0, P)$
+\If{$n_x > 3000$}
+  \State \Return $x^0 \gets x_0$
 \EndIf
-\State $x_0 \gets \textsc{InteriorPush}(x_0, \ell, u, \nu)$ \Comment{Push into strict interior of bounds}
-\For{attempt $a = 0, 1, 2$ (L2, smooth L1, epigraph)}
-  \State Solve Phase~I NLP with objective regime~$a$ from $x_0$ (or incumbent) and compute residual $r_a$
-  \State Accept if $r_a < r_{\text{best}}$ and $\|\bar{x} - x_0\|/\max(1,\|x_0\|) < D_{\max}$
-  \If{$r_a < \eta_f$}
-    \State \Return $x^0 \gets \bar{x}$
+\State $(\ell_x, u_x) \gets$ variable bounds from $P$
+\State $x_0 \gets \textsc{InteriorPush}(x_0, \ell_x, u_x, 0.1)$
+\State $x_{\mathrm{best}} \gets x_0$, $r_{\mathrm{best}} \gets r_0$
+\State $x_{\mathrm{warm}} \gets x_0$, $r_{\mathrm{warm}} \gets r_0$
+\State $\sigma \gets \max(1, \|x_0\|_2)$, $D \gets 50$
+\State Initialise residual and objective metrics
+\For{$a = 0, \ldots, a_{\max} - 1$}
+  \State Solve Phase~I NLP regime $a$ from $x_0$ if $a=0$, else from $x_{\mathrm{warm}}$
+  \State Obtain candidate $\bar{x}$ and residual $r$
+  \State $d \gets \|\bar{x} - x_0\|_2 / \sigma$
+  \If{$r < r_{\mathrm{warm}}$}
+    \State $x_{\mathrm{warm}} \gets \bar{x}$, $r_{\mathrm{warm}} \gets r$
   \EndIf
-\EndFor
-\State Build multistart set: lower-bound, upper-bound, midpoint corners, and Gaussian-perturbed candidates
-\For{each candidate start $x^{(s)}$ in multistart set}
-  \For{attempt $a = 0, 1$ (L2, smooth L1)}
-    \State Solve Phase~I NLP with regime~$a$ from $x^{(s)}$ and obtain candidate $\bar{x}^{(s)}$
-    \State Compute residual $r^{(s)}$ and normalised displacement $d^{(s)}$
-    \If{$r^{(s)} < r_{\text{best}}$ and $d^{(s)} < D_{\max}$}
-      \State Update incumbent $x^0 \gets \bar{x}^{(s)}$, $r_{\text{best}} \gets r^{(s)}$
-    \EndIf
-  \EndFor
-  \If{$r_{\text{best}} < \eta_f$}
+  \If{$r < r_{\mathrm{best}}$ \textbf{and} $(d < D \textbf{ or } r < 10^{-6})$}
+    \State $x_{\mathrm{best}} \gets \bar{x}$, $r_{\mathrm{best}} \gets r$
+  \EndIf
+  \If{$r < 10^{-6}$}
     \State \textbf{break}
   \EndIf
 \EndFor
-\State \Return $x^0$
+\If{$r_{\mathrm{best}} > 10^{-4}$ \textbf{and} $r_{\max} > 0$}
+  \State Build deterministic restart candidates from lower bounds, upper bounds, midpoint, and Gaussian perturbations using a seed mixed with the problem name
+  \For{$j = 0, \ldots, \min(r_{\max}, |\mathcal C|) - 1$}
+    \State $x_{\mathrm{cand}} \gets \mathcal C_j$
+    \For{$a = 0, 1$}
+      \State Solve Phase~I NLP regime $a$ from $x_{\mathrm{cand}}$ if $a=0$, else from $x_{\mathrm{best}}$
+      \State Obtain candidate $\bar{x}$ and residual $r$
+      \State $d \gets \|\bar{x} - x_0\|_2 / \sigma$
+      \If{$r < r_{\mathrm{best}}$ \textbf{and} $(d < D \textbf{ or } r < 10^{-6})$}
+        \State $x_{\mathrm{best}} \gets \bar{x}$, $r_{\mathrm{best}} \gets r$
+      \EndIf
+      \If{$r_{\mathrm{best}} < 10^{-4}$}
+        \State \textbf{break}
+      \EndIf
+    \EndFor
+    \If{$r_{\mathrm{best}} < 10^{-4}$}
+      \State \textbf{break}
+    \EndIf
+  \EndFor
+\EndIf
+\State \Return $x^0 \gets x_{\mathrm{best}}$ and associated metrics
 \end{algorithmic}
 \end{algorithm}
+
+Algorithm~\ref{alg:phase1} summarizes the practical Phase~I procedure used to generate a reliable warm start for the adaptive outer loop.
+
+In practice, the solver may fail to find an initial search direction from the user-provided starting point and report infeasibility immediately. To improve startup robustness without changing the theoretical Scholtes framework~\cite{Scholtes2001}, MPECSS cycles through the three objective formulations described above. Each formulation offers a different objective geometry, and the cascade is arranged so that a more robust formulation is tried whenever the preceding one encounters numerical difficulty. For very large problems ($n > 3000$), Phase~I is skipped entirely as it becomes computationally expensive; in this case, the user-provided starting point is passed directly to Phase~II.
 
 When Phase~I achieves a complementarity residual $r_0 \leq 100\,
 \varepsilon_{\mathrm{tol}}$, the implementation performs an early
 stationarity evaluation before entering the Phase~II outer loop: it
 solves one NLP at a small regularization parameter
 $\bar{t} = \max(0.1\,r_0,\, 10^{-12})$ to extract multipliers and runs
-the sign test.  Three outcomes are distinguished:
+the sign test.  Three outcomes are identified:
 If the sign test passes and $r_0 \leq \varepsilon_{\mathrm{tol}}$,
 Phase~II is skipped and the point proceeds directly to Phase~III.
 If $r_0 \leq \varepsilon_{\mathrm{tol}}$ but the sign test fails
 and the biactive count satisfies
 $|\mathcal{I}_{00}| \leq N_{\mathrm{LPEC}}$ (default $N_{\mathrm{LPEC}}=15$),
-Phase~III is invoked directly since the LPEC enumeration
-($2^{|\mathcal{I}_{00}|}$ branches) is tractable.
+Phase~III is executed directly since the LPEC enumeration
+($2^{|\mathcal{I}_{00}|}$ branches) is computationally manageable.
 Otherwise, Phase~II runs normally.
 Additionally, when Phase~I produces $r_0 < t_0$, the initial
 regularization parameter is fast-forwarded to
@@ -159,41 +181,11 @@ $t_0 \gets \max(10\,r_0,\, \varepsilon_{\mathrm{tol}}\,\tau)$ to
 preserve the refined starting point and avoid redundant outer
 iterations at large $t$ values.
 
-
 \subsection{Phase II: Adaptive Path-Following Strategy with Sign Test}
 \label{sec:adaptive_strategy}
 The main new idea in MPECSS is to integrate a \emph{multiplier sign test} 
 into the regularization path-following framework to guide the sequence  
-$\{t_k\}$ towards B-stationary points~\cite{ScheelScholtes2000}. The main idea is as follows:
-
-Algorithm~\ref{alg:phase2-main} gives the top-level orchestration of Phase~II, while Algorithms~\ref{alg:phase2-update} and~\ref{alg:phase2-restoration} detail its two key subroutines.
-
-\begin{algorithm}[t]
-\caption{Phase~II Main Adaptive Path-Following Loop}
-\label{alg:phase2-main}
-\begin{algorithmic}[1]
-\Require Warm-start $x^0$, initial regularization $t_0$, reduction factor $\kappa$, tolerance $\varepsilon_{\mathrm{tol}}$, maximum iterations $k_{\max}$
-\Ensure Candidate point $x^*$ for Phase~III
-\State Set $k \gets 0$; initialise history buffers, pathing/stagnation counters, and best-point pather $\mathit{best}$
-\While{$k < k_{\max}$}
-  \State Solve NLP$(t_k)$~\eqref{eq:nlp} from warm-start $x^k$ to obtain $(x^{k+1},\lambda^{k+1})$
-  \State Convert multipliers via~\eqref{eq:multiplier_conversion}; compute homotopy residual $r_{k+1}$ via~\eqref{eq:comp_res}
-  \State Run sign test on $\mathcal{I}_{00}(x^{k+1})$; update $\mathit{best}$ if $(r_{k+1},f_{k+1})$ improves the incumbent
-  \If{$r_{k+1} \le \varepsilon_{\mathrm{tol}}$ \textbf{and} sign test passes}
-    \State Set $x^* \gets x^{k+1}$ (complementarity-feasible S-stationarity candidate) and \textbf{break}
-  \EndIf
-  \If{sign test fails \textbf{and} $\mathcal{I}_{00}(x^{k+1}) \ne \emptyset$}
-    \State Invoke restoration (Alg.~\ref{alg:phase2-restoration}) at fixed $t_k$; if it returns a point, replace $x^{k+1}$ and re-evaluate $r_{k+1}$ and the sign test
-  \EndIf
-  \State Update $t_{k+1}$ via Algorithm~\ref{alg:phase2-update}
-  \State $k \gets k+1$
-\EndWhile
-\If{no convergence}
-  \State $x^* \gets \mathit{best}$ (lowest complementarity residual; ties broken by objective value)
-\EndIf
-\State \Return $x^*$
-\end{algorithmic}
-\end{algorithm}
+$\{t_k\}$ towards B-stationary points~\cite{ScheelScholtes2000}. 
 
 \subsubsection{Solve regularized NLP subproblems}
 \label{sec:solveRegNLPs}
@@ -216,6 +208,35 @@ implementation and archived benchmark runs, interior-point methods are
 used as the default because they were empirically the most reliable
 option across the tested problem families.
 For problems with $n \geq 500$, CasADi's MX symbolic type is used with reverse-mode automatic differentiation (\texttt{ad\_weight}$=1.0$), reducing Jacobian memory consumption from $O(n_x \times 64)$ to $O(n_g)$ compared to forward-mode; additionally, an LRU cache with automatic eviction is employed for solver templates and Jacobian functions to ensure stable memory usage during long benchmark campaigns.
+
+Algorithm~\ref{alg:phase2-main} provides the structure framework of Phase~II, while Algorithms~\ref{alg:phase2-update} and~\ref{alg:phase2-restoration} detail its two primary procedures.
+
+\begin{algorithm}[htbp]
+\caption{Phase~II Main Adaptive Path-Following Loop}
+\label{alg:phase2-main}
+\begin{algorithmic}[1]
+\Require Warm-start $x^0$, initial regularization $t_0$, reduction factor $\kappa$, tolerance $\varepsilon_{\mathrm{tol}}$, maximum iterations $k_{\max}$
+\Ensure Candidate point $x^*$ for Phase~III
+\State Set $k \gets 0$; initialise history buffers, stagnation counters, and best-point tracker $\mathit{best}$
+\While{$k < k_{\max}$}
+  \State Solve the regularized NLP at $t_k$ from warm-start $x^k$ to obtain $(x^{k+1},\lambda^{k+1})$
+  \State Convert multipliers and compute the homotopy residual $r_{k+1}$
+  \State Run the sign test on $\mathcal{I}_{00}(x^{k+1})$ and update $\mathit{best}$ if the candidate improves the incumbent
+  \If{$r_{k+1} \le \varepsilon_{\mathrm{tol}}$ \textbf{and} sign test passes}
+    \State Set $x^* \gets x^{k+1}$ and \textbf{break}
+  \EndIf
+  \If{sign test fails \textbf{and} $\mathcal{I}_{00}(x^{k+1}) \ne \emptyset$}
+    \State Invoke restoration (Alg.~\ref{alg:phase2-restoration}) at fixed $t_k$; if it returns a point, replace $x^{k+1}$ and re-evaluate $r_{k+1}$ and the sign test
+  \EndIf
+  \State Update $t_{k+1}$ via Algorithm~\ref{alg:phase2-update}
+  \State $k \gets k+1$
+\EndWhile
+\If{no convergence}
+  \State $x^* \gets \mathit{best}$
+\EndIf
+\State \Return $x^*$
+\end{algorithmic}
+\end{algorithm}
 
 When the primary solve fails (e.g., due to infeasibility detection,
 restoration failure, or numerical errors), MPECSS applies an automatic
@@ -327,7 +348,7 @@ Algorithm~\ref{alg:phase2-update} summarizes the implemented adaptive
 update logic. The code realizes this logic through five branches, with
 the stagnation regime split into two subcases.
 
-\begin{algorithm}[t]
+\begin{algorithm}[h]
 \caption{Phase~IIa Adaptive $t$-Update}
 \label{alg:phase2-update}
 \begin{algorithmic}[1]
@@ -509,7 +530,7 @@ The three strategies are tried in cascade order: R1 $\to$ R2 $\to$ R3. The first
 
 Algorithm~\ref{alg:phase2-restoration} gives the restoration workflow used when the sign test fails or recoverable solver failure is detected.
 
-\begin{algorithm}[t]
+\begin{algorithm}[htbp]
 \caption{Phase~IIb Restoration Subroutine at Fixed $t_k$}
 \label{alg:phase2-restoration}
 \begin{algorithmic}[1]
@@ -552,7 +573,7 @@ LPEC refinement loop, and a final post-check for B-stationarity.
 Algorithm~\ref{alg:phase3} summarizes the reported certification and
 refinement sequence.
 
-\begin{algorithm}[t]
+\begin{algorithm}[htbp]
 \caption{Phase~III B-Stationarity Certification and Refinement}
 \label{alg:phase3}
 \begin{algorithmic}[1]

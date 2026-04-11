@@ -15,11 +15,15 @@ This folder contains everything needed to run MPECSS benchmarks on Kaggle.
 |----------|---------|----------|----------------|
 | `MPECSS_Kaggle_MPECLib.ipynb` | MPECLib | 92 | ~4-6 hours |
 | `MPECSS_Kaggle_MacMPEC.ipynb` | MacMPEC | 191 | ~4-6 hours |
-| `MPECSS_Kaggle_NosBench_Group1.ipynb` | NosBench Group 1 | 201 | ~8-10 hours |
-| `MPECSS_Kaggle_NosBench_Group2.ipynb` | NosBench Group 2 | 201 | ~8-10 hours |
-| `MPECSS_Kaggle_NosBench_Group3.ipynb` | NosBench Group 3 | 201 | ~8-10 hours |
+| `MPECSS_Kaggle_MacMPEC_Ablation.ipynb` | MacMPEC study | 191 | ~3-6 hours per config |
+| `MPECSS_Kaggle_MacMPEC_SeedRobustness.ipynb` | MacMPEC study | 191 | ~3-6 hours per seed |
+| `MPECSS_Kaggle_MacMPEC_ParamSensitivity.ipynb` | MacMPEC study | 191 | ~3-6 hours per sweep |
+| `MPECSS_Kaggle_NosBench_Group1.ipynb` | NosBench Group 1 | 151 | ~6-8 hours |
+| `MPECSS_Kaggle_NosBench_Group2.ipynb` | NosBench Group 2 | 151 | ~6-8 hours |
+| `MPECSS_Kaggle_NosBench_Group3.ipynb` | NosBench Group 3 | 151 | ~6-8 hours |
+| `MPECSS_Kaggle_NosBench_Group4.ipynb` | NosBench Group 4 | 150 | ~6-8 hours |
 
-**Note:** NosBench is split into 3 groups to fit within Kaggle's 12-hour limit. Run them on 3 separate Kaggle instances in parallel.
+**Note:** NosBench is split into 4 groups (151/151/151/150 problems) to fit within Kaggle's 12-hour limit. Run them on 4 separate Kaggle instances in parallel.
 
 ## Folder Structure
 
@@ -30,16 +34,22 @@ kaggle_setup/
 │
 ├── MPECSS_Kaggle_MPECLib.ipynb        # MPECLib benchmark notebook
 ├── MPECSS_Kaggle_MacMPEC.ipynb        # MacMPEC benchmark notebook
+├── MPECSS_Kaggle_MacMPEC_Ablation.ipynb        # MacMPEC ablation study notebook
+├── MPECSS_Kaggle_MacMPEC_SeedRobustness.ipynb  # MacMPEC seed robustness notebook
+├── MPECSS_Kaggle_MacMPEC_ParamSensitivity.ipynb # MacMPEC parameter sensitivity notebook
 ├── MPECSS_Kaggle_NosBench_Group1.ipynb # NosBench Group 1 notebook
 ├── MPECSS_Kaggle_NosBench_Group2.ipynb # NosBench Group 2 notebook
 ├── MPECSS_Kaggle_NosBench_Group3.ipynb # NosBench Group 3 notebook
+├── MPECSS_Kaggle_NosBench_Group4.ipynb # NosBench Group 4 notebook
 │
 ├── resumable_benchmark.py              # Benchmark runner with resume support
+├── study_runner.py                     # Shared helper for MacMPEC study notebooks
 │
 ├── nosbench_splits/                    # Problem lists for NosBench groups
 │   ├── nosbench_group1_problems.txt
 │   ├── nosbench_group2_problems.txt
-│   └── nosbench_group3_problems.txt
+│   ├── nosbench_group3_problems.txt
+│   └── nosbench_group4_problems.txt
 │
 └── scripts/
     └── merge_results.py                # Merge results from multiple runs
@@ -60,7 +70,7 @@ The benchmarks require the `mpecss-benchmarks` dataset:
 ## After Running
 
 1. Download results from `/kaggle/working/outputs/`
-2. For NosBench, merge the 3 group CSVs using `scripts/merge_results.py`
+2. For NosBench, merge the 4 group CSVs using `scripts/merge_results.py`
 3. Download `/kaggle/working/outputs.zip` for a full archive of results, logs, and traces
 
 ## Troubleshooting

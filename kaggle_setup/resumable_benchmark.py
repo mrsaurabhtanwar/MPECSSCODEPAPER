@@ -93,6 +93,50 @@ def _bundle_results(results_dir: str) -> str:
     return archive_path
 
 
+def _count_json_files(directory: str) -> int:
+    """Count top-level JSON files in a benchmark directory."""
+    if not os.path.isdir(directory):
+        return 0
+    return sum(
+        1
+        for name in os.listdir(directory)
+        if os.path.isfile(os.path.join(directory, name)) and name.endswith(".json")
+    )
+
+
+def _resolve_json_subdir(directory: str, dataset_tag: str) -> str | None:
+    """Resolve a likely *-json subdirectory when the provided path is a parent folder."""
+    preferred = os.path.join(directory, f"{dataset_tag}-json")
+    if _count_json_files(preferred) > 0:
+        return preferred
+
+    candidates = []
+    for name in sorted(os.listdir(directory)):
+        child = os.path.join(directory, name)
+        if os.path.isdir(child) and name.endswith("-json") and _count_json_files(child) > 0:
+            candidates.append(child)
+
+    if len(candidates) == 1:
+        return candidates[0]
+    return None
+
+
+def _normalize_benchmark_json_path(path: str, dataset_tag: str) -> str:
+    """Normalize benchmark path to a directory that actually contains problem JSON files."""
+    if _count_json_files(path) > 0:
+        return path
+
+    resolved = _resolve_json_subdir(path, dataset_tag)
+    if resolved:
+        logger.warning(
+            "No JSON files found directly in %s; using %s instead.",
+            path,
+            resolved,
+        )
+        return resolved
+    return path
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Kaggle-friendly resumable benchmark wrapper for MPECSS."
@@ -116,6 +160,7 @@ def main() -> int:
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--problem", type=str, default=None)
     parser.add_argument("--num-problems", type=int, default=None)
+    parser.add_argument("--num-problem", dest="num_problems", type=int, help=argparse.SUPPRESS)
     parser.add_argument("--mem-limit-gb", type=float, default=None)
     parser.add_argument("--save-logs", action="store_true")
     parser.add_argument("--sort-by-size", action="store_true")
@@ -258,6 +303,23 @@ def main() -> int:
         else:
             logger.warning(f"Benchmark path not found: {benchmark_path}")
             logger.warning("Tried searching Kaggle dataset mounts under /kaggle/input.")
+
+    if benchmark_path and os.path.isdir(benchmark_path):
+        benchmark_path = _normalize_benchmark_json_path(benchmark_path, args.dataset)
+
+    if not benchmark_path or not os.path.isdir(benchmark_path):
+        logger.error(f"Benchmark path not found: {benchmark_path}")
+        logger.error("Pass a valid JSON directory with --path or use the notebook defaults.")
+        return 2
+
+    json_count = _count_json_files(benchmark_path)
+    if json_count == 0:
+        logger.error(f"No benchmark JSON files found in: {benchmark_path}")
+        logger.error(
+            "For NosBench, use the directory ending in '/benchmarks/nosbench/nosbench-json'."
+        )
+        return 2
+    logger.info(f"Benchmark path ready: {benchmark_path} ({json_count} JSON files)")
 
     injected_args = [
         "resumable_benchmark",  # argv[0]

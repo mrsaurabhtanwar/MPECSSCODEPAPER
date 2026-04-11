@@ -80,7 +80,7 @@ The benchmarks require the `mpecss-benchmarks` dataset:
 | "Dataset not found" | Add `mpecss-benchmarks` dataset to your notebook |
 | "Module not found" | Re-run the install cell (Cell 3) |
 | Session timeout | Use the Resume cell after restart |
-| 0 problems found | Check the `--path` points to correct directory |
+| 0 problems found / "0 of 0 problems selected" | Use the `*-json` directory (for NosBench: `.../benchmarks/nosbench/nosbench-json`) rather than its parent folder |
 
 ## Requirements
 

@@ -26,7 +26,9 @@ Official benchmark runs are maintained through the Kaggle notebooks in `kaggle_s
 ### 1. Open Kaggle
 Create a new notebook and add the dataset `mrsaurabhtanwar/mpecss-benchmarks`.
 
-### 2. Import the Notebook You Need
+### 2. Pick the notebook that matches your run
+
+**Main benchmark notebooks**
 - `kaggle_setup/MPECSS_Kaggle_MPECLib.ipynb`
 - `kaggle_setup/MPECSS_Kaggle_MacMPEC.ipynb`
 - `kaggle_setup/MPECSS_Kaggle_NosBench_Group1.ipynb`
@@ -34,7 +36,53 @@ Create a new notebook and add the dataset `mrsaurabhtanwar/mpecss-benchmarks`.
 - `kaggle_setup/MPECSS_Kaggle_NosBench_Group3.ipynb`
 - `kaggle_setup/MPECSS_Kaggle_NosBench_Group4.ipynb`
 
-The Kaggle-specific guide is in `kaggle_setup/README.md` and `kaggle_setup/QUICK_START.md`.
+**MacMPEC study notebooks**
+- `kaggle_setup/MPECSS_Kaggle_MacMPEC_Ablation.ipynb`
+- `kaggle_setup/MPECSS_Kaggle_MacMPEC_SeedRobustness.ipynb`
+- `kaggle_setup/MPECSS_Kaggle_MacMPEC_ParamSensitivity.ipynb`
+
+The Kaggle-specific guide is in `kaggle_setup/README.md` and `kaggle_setup/QUICK_START.md`. Each notebook installs the package in editable mode, runs `scripts/preflight_checks.py`, and calls `kaggle_setup/resumable_benchmark.py` to write outputs to `/kaggle/working/outputs`.
+
+---
+
+## Installation & Setup
+
+### Local Installation (Development)
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/mrsaurabhtanwar/MPECSS.git
+   cd MPECSS
+   ```
+
+2. **Create and activate a virtual environment**
+   ```bash
+   python -m venv .venv
+   .\.venv\Scripts\Activate.ps1  # PowerShell on Windows
+   # or: source .venv/bin/activate  # macOS/Linux
+   ```
+
+3. **Install the package in editable mode**
+   ```bash
+   python -m pip install --upgrade pip
+   python -m pip install -e .
+   ```
+
+4. **Install the test extra when you need pytest**
+   ```bash
+   python -m pip install -e ".[test]"
+   ```
+
+5. **Verify installation**
+   ```bash
+   python scripts/preflight_checks.py
+   ```
+
+### PyPI Installation (Stable)
+
+```bash
+python -m pip install mpecss
+```
 
 ---
 
@@ -43,8 +91,8 @@ The Kaggle-specific guide is in `kaggle_setup/README.md` and `kaggle_setup/QUICK
 You can solve a problem in just a few lines of code:
 
 ```python
-from mpecss.helpers.loaders.macmpec_loader import load_macmpec
-from mpecss.phase_2.mpecss import run_mpecss
+from mpecss import run_mpecss
+from mpecss.helpers import load_macmpec
 
 # 1. Load a pre-defined problem
 problem = load_macmpec("benchmarks/macmpec/macmpec-json/dempe.nl.json")
@@ -59,21 +107,60 @@ print(f"Status: {result['status']}")
 print(f"Result: {result['f_final']:.6f}")
 ```
 
+## Dependencies
+
+`pyproject.toml` defines the install metadata. `requirements.txt` mirrors the same runtime stack for direct installs.
+
+**Runtime dependencies**
+- `casadi >= 3.6.3` - Symbolic computation and automatic differentiation
+- `numpy >= 1.24` - Numerical computing
+- `scipy >= 1.11` - Scientific computing utilities
+- `pandas >= 2.0` - Data handling and analysis
+- `matplotlib >= 3.7` - Plotting for trace visualization
+- `psutil >= 5.9` - System introspection used by benchmark runs
+
+**Test extra**
+- `pytest >= 7.4` - Unit testing framework
+
+**Python version:** 3.10 or higher
+
+---
+
+## Development
+
+### Running Tests
+
+```bash
+pytest tests/
+```
+
+### Running Preflight Checks
+
+```bash
+python scripts/preflight_checks.py
+```
+
+### Documentation
+
+Detailed workflow diagrams and documentation are available in `docs/`:
+- `WORKFLOW_DIAGRAMS.md` - Algorithm flow documentation
+- `diagram_a_overview.mmd` - High-level overview
+- `diagram_b_phase12.mmd` - Phase I & II details
+- `diagram_c_phase3.mmd` - Phase III flow
+
 ---
 
 ## Running Benchmarks (886 Problems)
 
-MPECSS comes with a massive test suite of 886 problems to prove it works.
+MPECSS ships three benchmark suites:
 
-### Supported Path
-Use the Kaggle notebooks under `kaggle_setup/`. Each notebook:
+- **MPECLib**: 92 problems
+- **MacMPEC**: 191 problems
+- **NosBench**: 603 problems split across four Kaggle notebooks (151 / 151 / 151 / 150)
 
-- clones the pinned repository revision
-- runs `scripts/preflight_checks.py`
-- launches `kaggle_setup/resumable_benchmark.py`
-- writes outputs to `/kaggle/working/outputs`
+The supported path is the Kaggle notebooks under `kaggle_setup/`. Each notebook clones the repository, installs the package in editable mode, runs `scripts/preflight_checks.py`, and calls `kaggle_setup/resumable_benchmark.py` to write artifacts to `/kaggle/working/outputs`.
 
-NosBench is split across four Kaggle notebooks so the full 603-problem run fits within Kaggle's time limits.
+MacMPEC also includes three study notebooks for ablation, seed robustness, and parameter sensitivity experiments.
 
 ---
 
@@ -87,15 +174,27 @@ NosBench is split across four Kaggle notebooks so the full 603-problem run fits 
 
 ---
 
-## Simplified Project Layout
+## Project Structure
 
-- **`mpecss/`**: The core brain of the solver.
-  - `phase_1/`: Finding a good starting point.
-  - `phase_2/`: The main solving logic.
-  - `phase_3/`: Polishing and verifying the results.
-- **`benchmarks/`**: The massive collection of test problems.
-- **`kaggle_setup/`**: Kaggle notebooks and helper scripts for official benchmark runs.
-- **`results/`**: Where the solver saves its answers.
+```
+.
+├── mpecss/                 # Solver package
+│   ├── helpers/            # Loaders, solver wrappers, and utilities
+│   ├── phase_1/            # Phase I: Feasibility and starting point
+│   ├── phase_2/            # Phase II: Main solver loop
+│   └── phase_3/            # Phase III: Polishing and verification
+├── benchmarks/             # MPECLib, MacMPEC, and NosBench JSON suites
+├── kaggle_setup/           # Kaggle notebooks, runner, and helpers
+├── scripts/                # Utility scripts such as preflight checks
+├── docs/                   # Workflow diagrams and supporting docs
+├── verification/           # Reference results and regression baselines
+├── results/                # Generated solver outputs
+├── tests/                  # Unit tests
+├── paper/                  # Paper and supporting materials
+├── pyproject.toml          # Packaging metadata and dependencies
+├── requirements.txt        # Mirror of runtime dependencies
+└── LICENSE                 # Apache 2.0 License
+```
 
 ---
 

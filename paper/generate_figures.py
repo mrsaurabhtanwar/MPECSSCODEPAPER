@@ -112,7 +112,12 @@ def parse_args() -> argparse.Namespace:
 
 
 def discover_latest_csv(pattern: str) -> Path | None:
-    candidates = list(REPO_ROOT.glob(pattern))
+    results_root = REPO_ROOT / "results"
+    candidates: list[Path] = []
+    if results_root.exists():
+        candidates.extend(results_root.rglob(pattern))
+    if not candidates:
+        candidates.extend(REPO_ROOT.rglob(pattern))
     if not candidates:
         return None
     return max(candidates, key=lambda path: path.stat().st_mtime)
@@ -129,7 +134,70 @@ def load_rows(csv_path: Path) -> list[dict[str, str]]:
         return list(csv.DictReader(handle))
 
 
+def _row_identity(row: dict[str, str]) -> str:
+    return (row.get("problem_file") or row.get("problem_name") or "").strip()
+
+
+def _row_priority(row: dict[str, str]) -> int:
+    status = (row.get("status") or "").strip()
+    stationarity = (row.get("stationarity") or "").strip()
+
+    if status == "converged":
+        if stationarity == "B":
+            return 900
+        if stationarity == "C":
+            return 890
+        if stationarity == "S":
+            return 880
+        return 870
+
+    priority_map = {
+        "comp_infeasible": 860,
+        "stationarity_unverifiable": 850,
+        "nlp_failure": 840,
+        "unsupported_model": 830,
+        "load_error": 820,
+        "model_load_failure": 820,
+        "load_failed": 820,
+        "timeout": 700,
+        "oom": 690,
+        "crashed": 680,
+        "crash": 680,
+    }
+    return priority_map.get(status.lower(), 600)
+
+
+def dedupe_rows(rows: list[dict[str, str]]) -> list[dict[str, str]]:
+    deduped: list[dict[str, str]] = []
+    index: dict[str, int] = {}
+
+    for row in rows:
+        key = _row_identity(row)
+        if not key:
+            deduped.append(row)
+            continue
+
+        idx = index.get(key)
+        if idx is None:
+            index[key] = len(deduped)
+            deduped.append(row)
+            continue
+
+        existing = deduped[idx]
+        if _row_priority(row) > _row_priority(existing):
+            deduped[idx] = row
+            continue
+        if _row_priority(row) == _row_priority(existing):
+            existing_ts = (existing.get("run_timestamp") or "").strip()
+            row_ts = (row.get("run_timestamp") or "").strip()
+            if row_ts and row_ts >= existing_ts:
+                deduped[idx] = row
+
+    return deduped
+
+
 def filter_rows(rows: list[dict[str, str]], suite_key: str) -> list[dict[str, str]]:
+    rows = dedupe_rows(rows)
     if suite_key == "mpeclib":
         return [row for row in rows if (row.get("status") or "").strip() != "unsupported_model"]
     return rows

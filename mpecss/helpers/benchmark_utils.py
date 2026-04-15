@@ -1983,6 +1983,7 @@ def _run_parallel_isolated(problem_files, loader_fn, args, results_dir, dataset_
     _active_manager = manager
     
     all_results = []
+    result_index: Dict[str, int] = {}
     completed = 0
     total = len(problem_files)
     benchmark_start = time.time()
@@ -2032,20 +2033,26 @@ def _run_parallel_isolated(problem_files, loader_fn, args, results_dir, dataset_
                 if problem_file in active_procs:
                     dp, _ = active_procs.pop(problem_file)
                     dp.join(timeout=1.0)
-                completed += 1
-                elapsed = time.time() - benchmark_start
-                prob_time = res.get('cpu_time_total', res.get('time_total', '?'))
-                if isinstance(prob_time, (int, float)):
-                    prob_time = f"{prob_time:.1f}s"
-                size_tag = res.get('problem_size_mode', '?')
-                logger.info(
-                    f"[{completed}/{total}] "
-                    f"{res.get('problem_file', problem_file)} — "
-                    f"{res.get('status')} | "
-                    f"size={size_tag} | prob_time={prob_time} | "
-                    f"elapsed={elapsed:.0f}s"
-                )
-                all_results.append(res)
+                is_new = _record_result(all_results, res, result_index)
+                if is_new:
+                    completed += 1
+                    elapsed = time.time() - benchmark_start
+                    prob_time = res.get('cpu_time_total', res.get('time_total', '?'))
+                    if isinstance(prob_time, (int, float)):
+                        prob_time = f"{prob_time:.1f}s"
+                    size_tag = res.get('problem_size_mode', '?')
+                    logger.info(
+                        f"[{completed}/{total}] "
+                        f"{res.get('problem_file', problem_file)} — "
+                        f"{res.get('status')} | "
+                        f"size={size_tag} | prob_time={prob_time} | "
+                        f"elapsed={elapsed:.0f}s"
+                    )
+                else:
+                    logger.warning(
+                        f"Late duplicate result for {res.get('problem_file', problem_file)} "
+                        f"with status={res.get('status')} was merged into the existing CSV row."
+                    )
                 _save_csv(all_results, summary_path)
             except _queue_module.Empty:
                 break
@@ -2065,11 +2072,13 @@ def _run_parallel_isolated(problem_files, loader_fn, args, results_dir, dataset_
                             _p.join(timeout=2)
                     except Exception:
                         pass
-                    all_results.append({
+                    interrupt_res = {
                         "problem_file": _f,
                         "status": "interrupted",
                         "error_msg": "Cancelled by KeyboardInterrupt",
-                    })
+                    }
+                    if _record_result(all_results, interrupt_res, result_index):
+                        completed += 1
                 active_procs.clear()
                 remaining.clear()
                 _save_csv(all_results, summary_path)
@@ -2093,7 +2102,6 @@ def _run_parallel_isolated(problem_files, loader_fn, args, results_dir, dataset_
                 if p.is_alive():
                     p.kill()
                 p.join()
-                completed += 1
                 audit_json_path = _artifact_paths(results_dir, dataset_tag, args.tag, run_id, f)["audit_json"]
                 elapsed_wall_s = time.time() - start_time
                 audit_info = _mark_audit_terminal_status(
@@ -2115,7 +2123,12 @@ def _run_parallel_isolated(problem_files, loader_fn, args, results_dir, dataset_
                     audit_json_path=audit_json_path,
                     audit_info=audit_info,
                 )
-                all_results.append(timeout_res)
+                if _record_result(all_results, timeout_res, result_index):
+                    completed += 1
+                else:
+                    logger.warning(
+                        f"Timeout row for {timeout_res.get('problem_file', f)} merged with an existing result row."
+                    )
                 _save_csv(all_results, summary_path)
                 del active_procs[f]
                 continue
@@ -2130,19 +2143,25 @@ def _run_parallel_isolated(problem_files, loader_fn, args, results_dir, dataset_
                     if problem_file in active_procs:
                         dp, _ = active_procs.pop(problem_file)
                         dp.join(timeout=1.0)
-                    completed += 1
-                    elapsed = time.time() - benchmark_start
-                    prob_time = res.get('cpu_time_total', res.get('time_total', '?'))
-                    if isinstance(prob_time, (int, float)):
-                        prob_time = f"{prob_time:.1f}s"
-                    logger.info(
-                        f"[{completed}/{total}] "
-                        f"{res.get('problem_file', problem_file)} — "
-                        f"{res.get('status')} | "
-                        f"prob_time={prob_time} | "
-                        f"elapsed={elapsed:.0f}s"
-                    )
-                    all_results.append(res)
+                    is_new = _record_result(all_results, res, result_index)
+                    if is_new:
+                        completed += 1
+                        elapsed = time.time() - benchmark_start
+                        prob_time = res.get('cpu_time_total', res.get('time_total', '?'))
+                        if isinstance(prob_time, (int, float)):
+                            prob_time = f"{prob_time:.1f}s"
+                        logger.info(
+                            f"[{completed}/{total}] "
+                            f"{res.get('problem_file', problem_file)} — "
+                            f"{res.get('status')} | "
+                            f"prob_time={prob_time} | "
+                            f"elapsed={elapsed:.0f}s"
+                        )
+                    else:
+                        logger.warning(
+                            f"Late duplicate result for {res.get('problem_file', problem_file)} "
+                            f"with status={res.get('status')} was merged into the existing CSV row."
+                        )
                     _save_csv(all_results, summary_path)
                 except _queue_module.Empty:
                     pass
@@ -2152,7 +2171,6 @@ def _run_parallel_isolated(problem_files, loader_fn, args, results_dir, dataset_
                 # If f still in active_procs, it truly yielded no result.
                 if f in active_procs:
                     exit_code = p.exitcode
-                    completed += 1
                     if exit_code == 0:
                         logger.error(f"[{completed}/{total}] {f} — process exited cleanly but sent no result")
                         crash_status = "crashed"
@@ -2191,7 +2209,13 @@ def _run_parallel_isolated(problem_files, loader_fn, args, results_dir, dataset_
                         audit_json_path=audit_json_path,
                         audit_info=audit_info,
                     )
-                    all_results.append(crash_res)
+                    if _record_result(all_results, crash_res, result_index):
+                        completed += 1
+                    else:
+                        logger.warning(
+                            f"Synthetic {crash_status} row for {crash_res.get('problem_file', f)} "
+                            f"was merged with an existing result row."
+                        )
                     _save_csv(all_results, summary_path)
                     del active_procs[f]
                     p.join()
@@ -2217,11 +2241,88 @@ def _run_parallel_isolated(problem_files, loader_fn, args, results_dir, dataset_
             pass
         _active_manager = None
 
-    return all_results
+    return _dedupe_results(all_results)
+
+
+def _result_identity(result: Dict[str, Any]) -> str:
+    return (
+        str(result.get("problem_file") or "").strip()
+        or str(result.get("problem_name") or "").strip()
+    )
+
+
+def _result_priority(result: Dict[str, Any]) -> int:
+    status = str(result.get("status") or "").strip()
+    stationarity = str(result.get("stationarity") or "").strip()
+
+    if status == "converged":
+        if stationarity == "B":
+            return 900
+        if stationarity == "C":
+            return 890
+        if stationarity == "S":
+            return 880
+        return 870
+
+    priority_map = {
+        "comp_infeasible": 860,
+        "stationarity_unverifiable": 850,
+        "nlp_failure": 840,
+        "unsupported_model": 830,
+        "load_error": 820,
+        "model_load_failure": 820,
+        "load_failed": 820,
+        "timeout": 700,
+        "oom": 690,
+        "crashed": 680,
+        "crash": 680,
+        "interrupted": 670,
+        "exception": 660,
+    }
+    return priority_map.get(status.lower(), 600)
+
+
+def _prefer_result(existing: Dict[str, Any], candidate: Dict[str, Any]) -> Dict[str, Any]:
+    existing_priority = _result_priority(existing)
+    candidate_priority = _result_priority(candidate)
+    if candidate_priority > existing_priority:
+        return candidate
+    if candidate_priority < existing_priority:
+        return existing
+
+    existing_ts = str(existing.get("run_timestamp") or "")
+    candidate_ts = str(candidate.get("run_timestamp") or "")
+    if candidate_ts and candidate_ts >= existing_ts:
+        return candidate
+    return existing
+
+
+def _record_result(results: List[Dict[str, Any]], result: Dict[str, Any], result_index: Dict[str, int]) -> bool:
+    key = _result_identity(result)
+    if not key:
+        results.append(result)
+        return True
+
+    idx = result_index.get(key)
+    if idx is None:
+        result_index[key] = len(results)
+        results.append(result)
+        return True
+
+    results[idx] = _prefer_result(results[idx], result)
+    return False
+
+
+def _dedupe_results(results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    deduped: List[Dict[str, Any]] = []
+    result_index: Dict[str, int] = {}
+    for result in results:
+        _record_result(deduped, result, result_index)
+    return deduped
 
 
 def _save_csv(results: List[Dict[str, Any]], path: str) -> None:
     """Write the current results list to a CSV, keeping only OFFICIAL_COLUMNS in order."""
-    df   = pd.DataFrame(results)
+    df   = pd.DataFrame(_dedupe_results(results))
     cols = [c for c in OFFICIAL_COLUMNS if c in df.columns]
     df[cols].to_csv(path, index=False)

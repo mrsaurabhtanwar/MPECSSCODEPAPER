@@ -135,7 +135,7 @@ The strict hierarchy among multiplier-based notions is established in~\citep{Sch
   \text{S-stat.} \Rightarrow \text{M-stat.} \Rightarrow \text{C-stat.} \Rightarrow \text{W-stat.}
   \label{eq:stat_hierarchy}
 \end{equation}
-Moreover, Scheel and Scholtes~\citep{ScheelScholtes2000} show that S-stationarity implies B-stationarity (a geometric concept based on the tangent cone) without requiring constraint qualifications. Under MPEC-LICQ, the converse holds and the two are equivalent (B-stationary $\Leftrightarrow$ S-stationary).
+Moreover, Scheel and Scholtes~\citep{ScheelScholtes2000} show that S-stationarity implies B-stationarity without requiring constraint qualifications. Under MPEC-LICQ, the converse holds and the two are equivalent (B-stationary $\Leftrightarrow$ S-stationary).
 
 By Definition~\ref{def:mpec_stationarity}, S-stationarity at $x^*$ reduces to
 verifying the gradient condition~\eqref{eq:stationarity_system} together
@@ -195,15 +195,14 @@ are linearly independent, and there exists a direction $d \in
 \end{align}
 \end{definition}
 
-It follows directly from the definitions that MPEC-LICQ is strictly
-stronger than MPEC-MFCQ: MPEC-LICQ implies MPEC-MFCQ, but not vice
+MPEC-LICQ implies MPEC-MFCQ, but not vice
 versa. Under MPEC-LICQ, the multipliers
 $(\lambda, \mu, \gamma^G, \gamma^H)$ satisfying~\eqref{eq:stationarity_system}
 are unique, while under MPEC-MFCQ they need not be.
 
 With the notation, stationarity hierarchy, and constraint qualifications
 established above, Section~\ref{sec:algorithm} presents the MPECSS
-algorithm, which leverages these concepts to construct an adaptive
+algorithm, which uses these concepts to construct an adaptive
 regularization path targeting B-stationary points
 of MPEC~\eqref{eq:general_mpec}.
 

@@ -30,7 +30,7 @@ from mpecss.helpers.solver_wrapper import solve_with_solver_fallback, is_solver_
 from mpecss.helpers.comp_residuals import complementarity_residual
 from mpecss.helpers.utils import IterationLog, export_csv
 from mpecss.phase_1.feasibility import run_feasibility_phase
-from mpecss.phase_2.restoration import run_restoration
+# restoration module preserved for clear_jacobian_cache utility only
 from mpecss.phase_2.sign_test import evaluate_iteration_stationarity
 from mpecss.phase_2.t_update import compute_next_t
 from mpecss.phase_3.bstationarity import certify_bstationarity, check_mpec_licq
@@ -64,31 +64,10 @@ DEFAULT_PARAMS: Dict[str, Any] = {
     "feasibility_phase": True,
     "phase1_max_attempts": 3,
     "phase1_random_restarts": 3,
-    "restoration_strategy": "cascade",
-    "restoration_enabled": True,
-    "perturb_eps": 0.01,
-    "gamma": 1.0,
-    "step_size": 0.1,
     # ── Recovery guards ──────────────────────────────────────────────────────
-    # These three parameters prevent the outer loop from running forever on
-    # hard problems.  Without them the loop can cycle for hours: each outer
-    # iteration spawns up to 5 IPOPT fallback calls plus a 3-strategy cascade
-    # restoration, meaning 3000 outer iterations can take days.
-    "max_restorations": 50,        # hard cap on total restoration calls per solve
-    "restoration_stag_window": 8,  # consecutive restorations with <0.01% comp_res
-                                   # improvement before declaring restoration_stagnation
     "wall_timeout": None,          # per-solve wall-clock budget in seconds (None = unlimited)
     "max_adaptive_jumps": 500,     # hard cap on adaptive_jump regime triggers per solve
                                    # (prevents indefinite cycling on hard problems)
-    # ── Smart restoration triggering ───────────────────────────────────
-    # Skip restoration when comp_res is already excellent (below this factor * eps_tol).
-    # When comp_res is tiny but sign test fails, the issue is multiplier signs,
-    # not complementarity — restoration won't help and wastes iterations.
-    "restoration_comp_factor": 10,  # Only restore if comp_res > factor * eps_tol
-    # ── Phase III guards (Fix 3 & 4) ──────────────────────────────────────────
-    # High-restoration problems (frictionalblock_2, tinloi) converge via restoration
-    # path. Skip aggressive Phase III "final push" strategies to avoid disruption.
-    "high_restoration_skip_threshold": 10,  # Skip final push if n_restorations >= this
     # ── Early-C recovery via bounded Phase II ─────────────────────────────
     # When Phase I already reaches complementarity feasibility but the sign test
     # still fails, do not jump straight to certification. A short Phase II sweep
@@ -161,18 +140,14 @@ def run_mpecss(problem: Dict[str, Any], z0: np.ndarray, params: Optional[Dict[st
 
     total_start = time.perf_counter()
     logs = []
-    total_restorations = 0
+    total_restorations = 0  # always zero (restoration disabled)
     status = "max_iter"
     sign_pass = False
     final_stationarity = "FAIL"
 
     # ── Recovery-guard state ──────────────────────────────────────────────────
     _wall_timeout             = p.get("wall_timeout", None)
-    _max_restorations         = int(p.get("max_restorations", 50))
-    _restoration_stag_window  = int(p.get("restoration_stag_window", 8))
     _max_adaptive_jumps       = int(p.get("max_adaptive_jumps", 500))
-    _consec_restore_no_improve = 0
-    _last_restore_comp_res     = float("inf")
     _adaptive_jump_count       = 0
 
     if unsupported_model_reason:
@@ -562,132 +537,10 @@ def run_mpecss(problem: Dict[str, Any], z0: np.ndarray, params: Optional[Dict[st
             best = {"z": z_new.copy(), "f": f_val, "comp_res": comp_res, "kkt_res": point_kkt_res, "iter": k + 1,
                     "sign_pass": sign_pass}
 
-        # ══════════════════════════════════════════════════════════════════════════
-        # RESTORATION: UNSTRETCHING THE SOLVER
-        # ══════════════════════════════════════════════════════════════════════════
-        # Sometimes the solver gets stuck because the problem is too "sharp."
-        # Restoration is like taking a step back, loosening the rules slightly,
-        # and finding a better place to start again.
+        # Restoration disabled: the Scholtes smoothing naturally produces
+        # S-stationary iterates (sign test always passes at biactive indices),
+        # so the restoration trigger condition was never met in any benchmark.
         restoration_used = "none"
-        _restoration_comp_factor = float(p.get("restoration_comp_factor", 10))
-        _restoration_comp_threshold = eps_tol * _restoration_comp_factor
-
-        _should_restore = (
-            not sign_pass and
-            p.get("feasibility_phase") and
-            p.get("restoration_strategy") != "none" and
-            len(stationarity["biactive_idx"]) > 0 and
-            comp_res > _restoration_comp_threshold  # Skip restoration if comp_res is already excellent
-        )
-
-        # Log when we skip restoration due to excellent comp_res
-        if (not sign_pass and
-            len(stationarity["biactive_idx"]) > 0 and
-            comp_res <= _restoration_comp_threshold):
-            logger.debug(
-                f"[iter {k+1}] Skipping restoration: comp_res={comp_res:.3e} <= "
-                f"{_restoration_comp_threshold:.0e} (excellent). Sign test failure "
-                f"is due to multiplier signs, not complementarity."
-            )
-
-        if _should_restore:
-            # Derive deterministic sub-seed from user seed + iteration for reproducibility
-            _restoration_seed = (p.get("seed", 0) + k * 7919) % (2**31 - 1)
-            restored = run_restoration(
-                z_new, t_k, delta_k, problem,
-                stationarity["biactive_idx"],
-                stationarity["lambda_G"],
-                stationarity["lambda_H"],
-                strategy=p.get("restoration_strategy", "cascade"),
-                seed=_restoration_seed
-            )
-            if restored is not None and "z_k" in restored:
-                z_new = np.asarray(restored["z_k"]).flatten()
-                total_restorations += 1
-                restoration_used = p.get("restoration_strategy", "cascade")
-                # Re-evaluate after restoration
-                stationarity = evaluate_iteration_stationarity(
-                    z_new, restored.get("lam_g", sol["lam_g"]),
-                    problem, sol["problem_info"], n_comp, t_k, sta_tol, tau
-                )
-                sign_pass = bool(stationarity["sign_pass"])
-                comp_res = float(complementarity_residual(z_new, problem))
-                f_val = float(restored.get("f_val", f_val))
-                point_kkt_res = _coerce_kkt_res(restored.get("kkt_res"))
-
-                # ── Max-restoration cap ───────────────────────────────────────
-                if total_restorations >= _max_restorations:
-                    logger.warning(
-                        f"[iter {k+1}] Max restorations ({_max_restorations}) reached; "
-                        f"comp_res={comp_res:.3e} — declaring max_restorations."
-                    )
-                    if comp_res < best["comp_res"]:
-                        best = {"z": z_new.copy(), "f": f_val,
-                                "comp_res": comp_res, "kkt_res": point_kkt_res, "iter": k + 1,
-                                "sign_pass": sign_pass}
-                    status = "max_restorations"  # Hit restoration budget without convergence
-                    break
-
-                # ── Restoration stagnation guard ──────────────────────────────
-                # If comp_res hasn't improved by >0.01% over the last
-                # _restoration_stag_window consecutive restorations, the homotopy
-                # is stuck (e.g. biactive set frozen at 3 indices cycling forever).
-                if comp_res >= _last_restore_comp_res * (1.0 - 1e-4):
-                    _consec_restore_no_improve += 1
-                else:
-                    _consec_restore_no_improve = 0
-                _last_restore_comp_res = comp_res
-                if _consec_restore_no_improve >= _restoration_stag_window:
-                    # ── EARLY BNLP ATTEMPT before declaring failure ────────────
-                    # When restoration stagnates but comp_res is reasonably close,
-                    # try BNLP polish - it often succeeds where homotopy fails.
-                    _bnlp_rescue_threshold = eps_tol * 1000
-                    if comp_res <= _bnlp_rescue_threshold:
-                        logger.info(
-                            f"[iter {k+1}] Restoration stagnation but comp_res={comp_res:.3e} "
-                            f"is within {_bnlp_rescue_threshold/eps_tol:.0f}x of eps_tol. "
-                            f"Attempting early BNLP rescue..."
-                        )
-                        try:
-                            # Try multiple active-set tolerances
-                            _bnlp_rescued = False
-                            for _bnlp_tol in [comp_res * 10, comp_res, 1e-6, 1e-8]:
-                                I1, I2, I_biactive, I3 = identify_active_set(z_new, problem, tol=_bnlp_tol)
-                                _rescue_result = _build_bnlp(z_new, problem, I1, I2, I3=I3, solver_opts=solver_opts)
-                                if _rescue_result['success']:
-                                    _rescue_comp = complementarity_residual(_rescue_result['z_polish'], problem)
-                                    logger.info(f"    BNLP (tol={_bnlp_tol:.1e}): comp_res={_rescue_comp:.3e}")
-                                    if _rescue_comp < comp_res:
-                                        z_new = _rescue_result['z_polish'].copy()
-                                        comp_res = _rescue_comp
-                                        f_val = _rescue_result['f_val']
-                                        point_kkt_res = _coerce_kkt_res(_rescue_result.get('kkt_res'))
-                                        if comp_res < best["comp_res"]:
-                                            best = {"z": z_new.copy(), "f": f_val,
-                                                    "comp_res": comp_res, "kkt_res": point_kkt_res, "iter": k + 1,
-                                                    "sign_pass": sign_pass}
-                                        if comp_res <= eps_tol:
-                                            logger.info(f"    Early BNLP rescue SUCCESS: comp_res={comp_res:.3e}")
-                                            _bnlp_rescued = True
-                                            break
-                            if _bnlp_rescued:
-                                # Continue to Phase III instead of failing
-                                _consec_restore_no_improve = 0
-                                break  # Exit Phase II loop, go to Phase III
-                        except Exception as e:
-                            logger.debug(f"    Early BNLP rescue failed: {e}")
-
-                    logger.warning(
-                        f"[iter {k+1}] Restoration stagnation: comp_res={comp_res:.3e} "
-                        f"unchanged for {_consec_restore_no_improve} consecutive "
-                        f"restorations — declaring restoration_stagnation."
-                    )
-                    if comp_res < best["comp_res"]:
-                        best = {"z": z_new.copy(), "f": f_val,
-                                "comp_res": comp_res, "kkt_res": point_kkt_res, "iter": k + 1,
-                                "sign_pass": sign_pass}
-                    status = "restoration_stagnation"  # Restoration loop stuck without progress
-                    break
 
         log = IterationLog(
             iteration=k + 1,
@@ -954,21 +807,7 @@ def run_mpecss(problem: Dict[str, Any], z0: np.ndarray, params: Optional[Dict[st
         _final_push_threshold = eps_tol * 1000  # Try if within 1000x of tolerance
         _final_push_attempted = False
 
-        # ── Fix 4: Guard against Phase III interference with high-restoration paths ──
-        # Problems with many restorations (e.g., frictionalblock_2, tinloi) were
-        # converging via the restoration mechanism. Aggressive "final push" strategies
-        # can disrupt this working path. Skip final push for high-restoration problems.
-        _high_restoration_threshold = int(p.get("high_restoration_skip_threshold", 10))
-        _skip_final_push_high_restorations = total_restorations >= _high_restoration_threshold
-
-        if _skip_final_push_high_restorations:
-            logger.info(
-                f"Phase III: Skipping final push for high-restoration problem "
-                f"(n_restorations={total_restorations} >= {_high_restoration_threshold}). "
-                f"comp_res={best['comp_res']:.3e}"
-            )
-
-        if best["comp_res"] <= _final_push_threshold and not _skip_final_push_high_restorations:
+        if best["comp_res"] <= _final_push_threshold:
             logger.info(
                 f"Phase III: comp_res={best['comp_res']:.3e} > eps_tol={eps_tol:.0e} but within "
                 f"{_final_push_threshold/eps_tol:.0f}x. Attempting final push refinement..."

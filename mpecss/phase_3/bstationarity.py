@@ -662,7 +662,7 @@ def bstat_post_check(result, problem, timeout=None, eps_tol=1e-6):
     # Fix 2: Also attempt B-stat check for non-converged with good comp_res
     # Include all failure statuses that might still have salvageable solutions
     _non_converged_statuses = ('comp_infeasible', 'nlp_failure', 'stationarity_unverifiable', 
-                               'restoration_stagnation', 'max_restorations', 'stagnation', 'max_iter')
+                               'stagnation', 'max_iter')
     should_check = (
         (status == 'converged' and stationarity in ('S', 'C')) or
         (status in _non_converged_statuses and comp_res <= eps_tol * 10)  # Within 10x tolerance

@@ -111,3 +111,9 @@ Thumbs.db
 .pytest_cache/
 
 .*zip
+
+
+# --- Tested folders (keep README) ---
+test_macmpec/
+test_mpeclib/
+test_nosbench-*/

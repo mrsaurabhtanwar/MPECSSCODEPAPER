@@ -3,7 +3,7 @@
 Merge benchmark results from multiple Kaggle runs.
 
 Usage:
-    python merge_results.py results_group1.csv results_group2.csv results_group3.csv results_group4.csv -o combined.csv
+    python merge_results.py results_group1.csv results_group2.csv results_group3.csv results_group4.csv results_group5.csv results_group6.csv -o combined.csv
     python merge_results.py *.csv -o combined.csv
     python merge_results.py /path/to/results/ -o combined.csv
 """

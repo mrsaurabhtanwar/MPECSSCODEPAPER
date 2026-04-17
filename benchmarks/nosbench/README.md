@@ -1,45 +1,58 @@
-# NOSBENCH Benchmark Suite
+# NOSBENCH Benchmark Dataset
 
-NOSBENCH is a massive collection of 603 math problems derived from "Nonsmooth Optimal Control." These problems are used to test how well solvers can handle robots, flying vehicles, and other complex systems with sudden changes (like a ball bouncing or a switch flipping).
+NOSBENCH is a benchmark collection of Mathematical Programs with Equilibrium Constraints (MPECs) from nonsmooth optimal control. The upstream NOSBENCH project is available at [GitHub](https://github.com/nosnoc/nosbench).
 
-## What's in this suite?
+> **The problem files are not included in this upload.** This folder contains only metadata and attribution. Download the data from the links below before running any benchmarks.
 
-These are our most advanced problems:
-- **Large Scale**: Some problems have over 14,000 variables!
-- **Complex Systems**: Includes models of the "Schumacher" racing line, bouncing balls, and shifting gears.
-- **Modern Research**: This is the first suite specifically designed for these types of modern control problems.
-
-## Quick Stats
+## Dataset Metadata
 
 | Property | Value |
 | :--- | :--- |
-| **Total Problems** | 603 |
-| **Problem Families** | 33 types of systems |
-| **Median Size** | ~1,771 variables |
-| **Format** | CasADi JSON (`.json`) and MATLAB (`.mat`) |
+| **Total problems** | 603 |
+| **Primary format** | CasADi JSON (`.json`) |
+| **Supplementary format** | MATLAB structured archive (`.mat`, organised by level) |
+| **Expected JSON folder** | `nosbench-json/` |
+| **Expected MATLAB folder** | `nosbench-mat/` |
+| **Batch split for Kaggle runs** | 101 / 101 / 101 / 100 / 100 / 100 |
 
-## Choosing a Subset
+## Download
 
-If 603 problems are too many for a quick test, we recommend these subsets:
-- **NOSBENCH-S** (100 problems): Small and simple cases for quick checks.
-- **NOSBENCH-RL** (167 problems): A representative set for a full research benchmark.
-
-## How to use it
-
-The supported benchmark path is the four Kaggle notebooks:
+Download the data and place it inside this folder so the expected structure is:
 
 ```text
-kaggle_setup/MPECSS_Kaggle_NosBench_Group1.ipynb
-kaggle_setup/MPECSS_Kaggle_NosBench_Group2.ipynb
-kaggle_setup/MPECSS_Kaggle_NosBench_Group3.ipynb
-kaggle_setup/MPECSS_Kaggle_NosBench_Group4.ipynb
+nosbench/
+├── README.md
+├── nosbench-json/           ← download and place here
+│   └── *.json               (603 files)
+└── nosbench-mat/            ← download and place here (optional)
+    ├── generators/
+    ├── level1/
+    ├── level2/
+    ├── level3/
+    └── level4/
 ```
 
-Each notebook runs one deterministic split through `kaggle_setup/resumable_benchmark.py` and writes artifacts to `/kaggle/working/outputs`.
+| Format | Source |
+| :--- | :--- |
+| CasADi JSON (`nosbench-json/`) | [nosnoc/nosbench on GitHub](https://github.com/nosnoc/nosbench) |
+| MATLAB archive (`nosbench-mat/`) | [nosnoc/nosbench on GitHub](https://github.com/nosnoc/nosbench) |
+
+## Usage Notes
+
+- After downloading, load instances from `benchmarks/nosbench/nosbench-json/`.
+- Treat each `*.json` file as one problem instance.
+- For batch Kaggle runs, problems are split into 6 groups (101/101/101/100/100/100). Point each group's notebook at the `nosbench-json/` subfolder, not the parent.
+- This dataset is solver-agnostic; use any compatible runner pipeline.
+
+## Ownership and Attribution
+
+All original rights to NOSBENCH belong to the original authors and rights holders.
+This folder is provided as benchmark metadata and source-reference material only.
+No original problem data is redistributed here.
 
 ## Credits
 
-- **Creators**: Armin Nurkanović, Anton Pozharskiy, and Moritz Diehl (University of Freiburg / SYSCOP).
+- **Creators**: Armin Nurkanović, Anton Pozharskiy, and Moritz Diehl (University of Freiburg / SYSCOP)
 
 ---
 If you use this suite in your research, please cite:

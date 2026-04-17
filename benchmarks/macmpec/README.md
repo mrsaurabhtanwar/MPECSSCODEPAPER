@@ -1,46 +1,47 @@
-# MacMPEC Benchmark Suite
+# MacMPEC Benchmark Dataset
 
-MacMPEC is the world's most popular collection of math problems for Equilibrium Constraints (MPECs). It contains 191 problems used by researchers everywhere to test their solver algorithms.
+MacMPEC is a benchmark suite of Mathematical Programs with Equilibrium Constraints (MPECs). The original MacMPEC collection is attributed to Sven Leyffer (Argonne National Laboratory).
 
-## What's in this suite?
+> **The problem files are not included in this upload.** This folder contains only metadata and attribution. Download the data from the links below before running any benchmarks.
 
-These problems come from many different areas, including:
-- **Traffic Planning**: How to design road networks.
-- **Economic Games**: How companies compete in markets.
-- **Bridge Design**: Finding the strongest structure for the least cost.
-- **Mechanical friction**: Modeling how parts rub together.
-
-## Quick Stats
+## Dataset Metadata
 
 | Property | Value |
 | :--- | :--- |
-| **Total Problems** | 191 |
-| **Smallest Problem** | 2 variables |
-| **Largest Problem** | 3,436 variables |
-| **Format** | CasADi JSON (`.nl.json`) |
+| **Total problems** | 191 |
+| **Primary format** | CasADi JSON (`.nl.json`) |
+| **Original format** | AMPL model/data files (`.mod`/`.dat`) |
+| **Expected folder name** | `macmpec-json/` |
 
-## How to use it
+## Download
 
-The supported benchmark path is the Kaggle notebook:
+Download the data and place it inside this folder so the expected structure is:
 
 ```text
-kaggle_setup/MPECSS_Kaggle_MacMPEC.ipynb
+macmpec/
+├── README.md
+└── macmpec-json/        ← download and place here
+    └── *.nl.json        (191 files)
 ```
 
-It runs the suite through `kaggle_setup/resumable_benchmark.py` and saves artifacts to `/kaggle/working/outputs`.
+| Format | Source |
+| :--- | :--- |
+| CasADi JSON (`macmpec-json/`) | [syscop cloud](https://cloud.syscop.de/s/rBnTMocFoLcNLWG) |
+| Original AMPL (`.mod`/`.dat`) | [MacMPEC wiki](https://wiki.mcs.anl.gov/leyffer/index.php/MacMPEC) |
+
+## Usage Notes
+
+- After downloading, load instances from `benchmarks/macmpec/macmpec-json/`.
+- Treat each `*.nl.json` file as one problem instance.
+- This dataset is solver-agnostic; use any compatible runner pipeline.
+
+## Ownership and Attribution
+
+All original rights to MacMPEC belong to the original authors and rights holders.
+This folder is provided as benchmark metadata and source-reference material only.
+No original problem data is redistributed here.
 
 ## Credits
 
-- **Creator**: Sven Leyffer (Argonne National Laboratory).
-- **JSON Conversion**: Armin Nurkanović, Anton Pozharskiy, and Moritz Diehl (University of Freiburg).
-
----
-If you use this suite in your research, please cite:
-```bibtex
-@techreport{Leyffer2000MacMPEC,
-  author = {Leyffer, Sven},
-  title = {MacMPEC: AMPL collection of MPECs},
-  institution = {Argonne National Laboratory},
-  year = {2000}
-}
-```
+- **Creator**: Sven Leyffer (Argonne National Laboratory)
+- **JSON Conversion**: Anton Pozharskiy (University of Freiburg)

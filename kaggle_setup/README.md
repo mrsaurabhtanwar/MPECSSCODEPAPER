@@ -1,6 +1,6 @@
 # MPECSS Kaggle Benchmark Setup
 
-This folder contains everything needed to run MPECSS benchmarks on Kaggle.
+This folder contains everything needed to run the benchmarks on Kaggle.
 
 ## Quick Start
 
@@ -15,15 +15,25 @@ This folder contains everything needed to run MPECSS benchmarks on Kaggle.
 |----------|---------|----------|----------------|
 | `MPECSS_Kaggle_MPECLib.ipynb` | MPECLib | 92 | ~4-6 hours |
 | `MPECSS_Kaggle_MacMPEC.ipynb` | MacMPEC | 191 | ~4-6 hours |
-| `MPECSS_Kaggle_MacMPEC_Ablation.ipynb` | MacMPEC study | 191 | ~3-6 hours per config |
-| `MPECSS_Kaggle_MacMPEC_SeedRobustness.ipynb` | MacMPEC study | 191 | ~3-6 hours per seed |
-| `MPECSS_Kaggle_MacMPEC_ParamSensitivity.ipynb` | MacMPEC study | 191 | ~3-6 hours per sweep |
-| `MPECSS_Kaggle_NosBench_Group1.ipynb` | NosBench Group 1 | 151 | ~6-8 hours |
-| `MPECSS_Kaggle_NosBench_Group2.ipynb` | NosBench Group 2 | 151 | ~6-8 hours |
-| `MPECSS_Kaggle_NosBench_Group3.ipynb` | NosBench Group 3 | 151 | ~6-8 hours |
-| `MPECSS_Kaggle_NosBench_Group4.ipynb` | NosBench Group 4 | 150 | ~6-8 hours |
+| `MPECSS_Kaggle_MacMPEC_Ablation_NoPhaseI.ipynb` | MacMPEC ablation | 191 | ~3-6 hours |
+| `MPECSS_Kaggle_MacMPEC_Ablation_FixedPhaseII.ipynb` | MacMPEC ablation | 191 | ~3-6 hours |
+| `MPECSS_Kaggle_MacMPEC_SeedRobustness_Seed11.ipynb` | MacMPEC study | 191 | ~3-6 hours |
+| `MPECSS_Kaggle_MacMPEC_SeedRobustness_Seed42.ipynb` | MacMPEC study | 191 | ~3-6 hours |
+| `MPECSS_Kaggle_MacMPEC_SeedRobustness_Seed123.ipynb` | MacMPEC study | 191 | ~3-6 hours |
+| `MPECSS_Kaggle_MacMPEC_ParamSensitivity_t0_0p1.ipynb` | MacMPEC study | 191 | ~3-6 hours |
+| `MPECSS_Kaggle_MacMPEC_ParamSensitivity_t0_1.ipynb` | MacMPEC study | 191 | ~3-6 hours |
+| `MPECSS_Kaggle_MacMPEC_ParamSensitivity_t0_10.ipynb` | MacMPEC study | 191 | ~3-6 hours |
+| `MPECSS_Kaggle_MacMPEC_ParamSensitivity_kappa_0p3.ipynb` | MacMPEC study | 191 | ~3-6 hours |
+| `MPECSS_Kaggle_MacMPEC_ParamSensitivity_kappa_0p5.ipynb` | MacMPEC study | 191 | ~3-6 hours |
+| `MPECSS_Kaggle_MacMPEC_ParamSensitivity_kappa_0p8.ipynb` | MacMPEC study | 191 | ~3-6 hours |
+| `MPECSS_Kaggle_NosBench_Group1.ipynb` | NosBench Group 1 | 101 | ~4-6 hours |
+| `MPECSS_Kaggle_NosBench_Group2.ipynb` | NosBench Group 2 | 101 | ~4-6 hours |
+| `MPECSS_Kaggle_NosBench_Group3.ipynb` | NosBench Group 3 | 101 | ~4-6 hours |
+| `MPECSS_Kaggle_NosBench_Group4.ipynb` | NosBench Group 4 | 100 | ~4-6 hours |
+| `MPECSS_Kaggle_NosBench_Group5.ipynb` | NosBench Group 5 | 100 | ~4-6 hours |
+| `MPECSS_Kaggle_NosBench_Group6.ipynb` | NosBench Group 6 | 100 | ~4-6 hours |
 
-**Note:** NosBench is split into 4 groups (151/151/151/150 problems) to fit within Kaggle's 12-hour limit. Run them on 4 separate Kaggle instances in parallel.
+**Note:** NosBench is split into 6 groups (101/101/101/100/100/100 problems) to finish faster on Kaggle. Run them on 6 separate Kaggle instances in parallel.
 
 ## Folder Structure
 
@@ -34,13 +44,23 @@ kaggle_setup/
 │
 ├── MPECSS_Kaggle_MPECLib.ipynb        # MPECLib benchmark notebook
 ├── MPECSS_Kaggle_MacMPEC.ipynb        # MacMPEC benchmark notebook
-├── MPECSS_Kaggle_MacMPEC_Ablation.ipynb        # MacMPEC ablation study notebook
-├── MPECSS_Kaggle_MacMPEC_SeedRobustness.ipynb  # MacMPEC seed robustness notebook
-├── MPECSS_Kaggle_MacMPEC_ParamSensitivity.ipynb # MacMPEC parameter sensitivity notebook
+├── MPECSS_Kaggle_MacMPEC_Ablation_NoPhaseI.ipynb      # MacMPEC ablation without Phase-I
+├── MPECSS_Kaggle_MacMPEC_Ablation_FixedPhaseII.ipynb  # MacMPEC ablation with fixed Phase-II update
+├── MPECSS_Kaggle_MacMPEC_SeedRobustness_Seed11.ipynb   # MacMPEC seed-11 notebook
+├── MPECSS_Kaggle_MacMPEC_SeedRobustness_Seed42.ipynb   # MacMPEC seed-42 notebook
+├── MPECSS_Kaggle_MacMPEC_SeedRobustness_Seed123.ipynb  # MacMPEC seed-123 notebook
+├── MPECSS_Kaggle_MacMPEC_ParamSensitivity_t0_0p1.ipynb # MacMPEC t0=0.1 notebook
+├── MPECSS_Kaggle_MacMPEC_ParamSensitivity_t0_1.ipynb   # MacMPEC t0=1.0 notebook
+├── MPECSS_Kaggle_MacMPEC_ParamSensitivity_t0_10.ipynb  # MacMPEC t0=10.0 notebook
+├── MPECSS_Kaggle_MacMPEC_ParamSensitivity_kappa_0p3.ipynb # MacMPEC kappa=0.3 notebook
+├── MPECSS_Kaggle_MacMPEC_ParamSensitivity_kappa_0p5.ipynb # MacMPEC kappa=0.5 notebook
+├── MPECSS_Kaggle_MacMPEC_ParamSensitivity_kappa_0p8.ipynb # MacMPEC kappa=0.8 notebook
 ├── MPECSS_Kaggle_NosBench_Group1.ipynb # NosBench Group 1 notebook
 ├── MPECSS_Kaggle_NosBench_Group2.ipynb # NosBench Group 2 notebook
 ├── MPECSS_Kaggle_NosBench_Group3.ipynb # NosBench Group 3 notebook
 ├── MPECSS_Kaggle_NosBench_Group4.ipynb # NosBench Group 4 notebook
+├── MPECSS_Kaggle_NosBench_Group5.ipynb # NosBench Group 5 notebook
+├── MPECSS_Kaggle_NosBench_Group6.ipynb # NosBench Group 6 notebook
 │
 ├── resumable_benchmark.py              # Benchmark runner with resume support
 ├── study_runner.py                     # Shared helper for MacMPEC study notebooks
@@ -49,7 +69,9 @@ kaggle_setup/
 │   ├── nosbench_group1_problems.txt
 │   ├── nosbench_group2_problems.txt
 │   ├── nosbench_group3_problems.txt
-│   └── nosbench_group4_problems.txt
+│   ├── nosbench_group4_problems.txt
+│   ├── nosbench_group5_problems.txt
+│   └── nosbench_group6_problems.txt
 │
 └── scripts/
     └── merge_results.py                # Merge results from multiple runs
@@ -70,8 +92,8 @@ The benchmarks require the `mpecss-benchmarks` dataset:
 ## After Running
 
 1. Download results from `/kaggle/working/outputs/`
-2. For NosBench, merge the 4 group CSVs using `scripts/merge_results.py`
-3. Download `/kaggle/working/outputs.zip` for a full archive of results, logs, and traces
+2. For NosBench, merge the 6 group CSVs using `scripts/merge_results.py`
+3. Download `/kaggle/working/outputs.zip` for a full archive of results, logs, traces, and the version note JSON
 
 ## Troubleshooting
 

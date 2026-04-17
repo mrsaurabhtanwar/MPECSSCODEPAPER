@@ -1665,6 +1665,7 @@ def _write_run_env(
     reproducibility: package versions, Python version, OS info, CLI args,
     thread env vars, and hardware info.  One file per benchmark run.
     """
+    os.makedirs(results_dir, exist_ok=True)
     env = {
         "run_timestamp":  timestamp,
         "dataset_tag":    dataset_tag,
@@ -1728,6 +1729,14 @@ def _write_run_env(
             "benchmark_utils": __file__,
         },
     }
+    env_path = env_path or os.path.join(
+        results_dir, f"{dataset_tag}_run_env_{args.tag}_{timestamp}.json"
+    )
+    version_note_path = os.path.join(
+        results_dir, f"{dataset_tag}_version_note_{args.tag}_{timestamp}.json"
+    )
+    env["result_artifacts"]["version_note"] = version_note_path
+    env["result_artifacts"]["run_env"] = env_path
 
     project_root_guess = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
     env["module_paths"]["project_root_guess"] = project_root_guess
@@ -1842,15 +1851,32 @@ def _write_run_env(
         except Exception:
             continue
 
-    env_path = env_path or os.path.join(
-        results_dir, f"{dataset_tag}_run_env_{args.tag}_{timestamp}.json"
-    )
     try:
         with open(env_path, "w") as f:
             json.dump(env, f, indent=2)
         logger.info(f"Run environment snapshot: {env_path}")
     except Exception as e:
         logger.warning(f"Could not write run environment snapshot: {e}")
+
+    version_note = {
+        "note": "Compact version record for the benchmark run.",
+        "run_timestamp": timestamp,
+        "dataset_tag": dataset_tag,
+        "benchmark_status": benchmark_status,
+        "summary_csv": summary_path,
+        "run_environment_snapshot": env_path,
+        "python": env["python"],
+        "packages": env["packages"],
+        "git": env["git"],
+        "cli_args": env["cli_args"],
+        "hardware": env["hardware"],
+    }
+    try:
+        with open(version_note_path, "w", encoding="utf-8") as f:
+            json.dump(_json_safe(version_note), f, indent=2)
+        logger.info(f"Version note snapshot: {version_note_path}")
+    except Exception as e:
+        logger.warning(f"Could not write version note snapshot: {e}")
     return env_path
 
 

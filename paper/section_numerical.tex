@@ -34,7 +34,7 @@ presents the complete MPECLib results.  Sections~\ref{sec:macmpec}
 and~\ref{sec:nosbench} report the MacMPEC and NOSBENCH results
 respectively.
 Section~\ref{sec:perf_profile} has the Dolan--Mor\'{e}
-performance profile analysis~\cite{DolanMore2002} with
+performance profile analysis~\cite{DolanMore2002} on
 MacMPEC benchmark suite.
 
 
@@ -43,17 +43,11 @@ MacMPEC benchmark suite.
 \label{sec:exp_setup}
 % --------------------------------------------------------------------------
 
-The archived benchmark artifacts in this repository were not produced on
-a single manually curated machine image; instead, each benchmark run is
-accompanied by a run-environment JSON that records the command line,
-package versions, platform information, and hardware metadata for that
-particular run. The checked-in verified MPECLib run-environment file,
-for example, records Linux on an Intel Xeon platform with 31.35\,GB RAM
+All benchmark runs use the same environment on the cloud service on the kaggle. Used machine is Linux on an Intel Xeon platform with 31.35\,GB RAM
 under Python~3.12.12, CasADi~3.7.2, and IPOPT~\cite{WachterBiegler2006}
 with the open-source linear solver MUMPS~\cite{Amestoy2001}. The code
 base also contains an SQP$+$qpOASES~\cite{Ferreau2014qpOASES} route for
-small problems ($n \leq 400$). No commercial libraries (HSL, Gurobi,
-SNOPT) are required.
+small problems ($n \leq 400$).
 
 The benchmark-runner configuration used throughout all benchmarks is
 listed in Table~\ref{tab:params}. A per-problem wall-clock time limit
@@ -94,7 +88,7 @@ Benchmark seed           & ---                & 42          & Benchmark-runner r
 \label{tab:params}
 \end{table}
 
-The benchmark utility writes a detailed CSV row for every instance
+The benchmark script writes a detailed CSV row for every instance
 together with a per-run environment JSON recording the command line,
 package versions, and hardware configuration. In addition to standard
 convergence fields, the logger records per-iteration test metrics
@@ -111,14 +105,14 @@ $50 \le n_x < 500$, and \emph{large} if $n_x \ge 500$.
 
 Each problem is assigned one of the following outcome classifications based on the solver's termination status and stationarity certificate:
 (i)~\emph{B-stationary}---the solver reports \texttt{converged} and the Phase~III LICQ/LPEC verification certifies B-stationarity;
-(ii)~\emph{C-stationary}---the solver reports \texttt{converged} but only C-stationarity can be certified (B-stationarity verification fails or is inconclusive);
+(ii)~\emph{C-stationary}---the solver reports \texttt{converged} but only C-stationarity can be certified (B-stationarity verification fails);
 (iii)~\emph{Timeout}---the 3600\,s wall-clock limit is exceeded before convergence;
 (iv)~\emph{Other failures}---complementarity infeasibility
 (\texttt{comp\_infeasible}), NLP solver failure
 (\texttt{nlp\_failure}), out-of-memory (\texttt{oom}), worker crash, or
 model-loading failure. Most \emph{converged} results satisfy the target
 threshold $r_{\mathrm{comp}} \leq 10^{-6}$ directly; however, in the
-benchmark harness a final B-stationarity post-check may also relabel a
+benchmark framework a final B-stationarity post-check may also relabel a
 small number of near-feasible outcomes with
 $r_{\mathrm{comp}} \leq 10\,\varepsilon_{\mathrm{tol}}$ after the final
 certification stage.
@@ -142,8 +136,6 @@ systems, or other extensions not directly expressible as standard
 complementarity pairs.  The archived raw CSV still logs these three
 instances with status \texttt{unsupported\_model}; the analysis below
 filters them out and therefore reports the supported 89-problem subset.
-In particular, the archived CSV shows that \texttt{mss} is treated as a
-supported MPEC instance and converges to a B-stationary point.
 We solve these 89 problems with MPECSS using the configuration in
 Table~\ref{tab:params}.
 

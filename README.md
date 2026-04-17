@@ -35,13 +35,27 @@ Create a new notebook and add the dataset `mrsaurabhtanwar/mpecss-benchmarks`.
 - `kaggle_setup/MPECSS_Kaggle_NosBench_Group2.ipynb`
 - `kaggle_setup/MPECSS_Kaggle_NosBench_Group3.ipynb`
 - `kaggle_setup/MPECSS_Kaggle_NosBench_Group4.ipynb`
+- `kaggle_setup/MPECSS_Kaggle_NosBench_Group5.ipynb`
+- `kaggle_setup/MPECSS_Kaggle_NosBench_Group6.ipynb`
 
-**MacMPEC study notebooks**
-- `kaggle_setup/MPECSS_Kaggle_MacMPEC_Ablation.ipynb`
-- `kaggle_setup/MPECSS_Kaggle_MacMPEC_SeedRobustness.ipynb`
-- `kaggle_setup/MPECSS_Kaggle_MacMPEC_ParamSensitivity.ipynb`
+**MacMPEC ablation notebooks**
+- `kaggle_setup/MPECSS_Kaggle_MacMPEC_Ablation_NoPhaseI.ipynb`
+- `kaggle_setup/MPECSS_Kaggle_MacMPEC_Ablation_FixedPhaseII.ipynb`
 
-The Kaggle-specific guide is in `kaggle_setup/README.md` and `kaggle_setup/QUICK_START.md`. Each notebook installs the package in editable mode, runs `scripts/preflight_checks.py`, and calls `kaggle_setup/resumable_benchmark.py` to write outputs to `/kaggle/working/outputs`.
+**MacMPEC seed-robustness notebooks**
+- `kaggle_setup/MPECSS_Kaggle_MacMPEC_SeedRobustness_Seed11.ipynb`
+- `kaggle_setup/MPECSS_Kaggle_MacMPEC_SeedRobustness_Seed42.ipynb`
+- `kaggle_setup/MPECSS_Kaggle_MacMPEC_SeedRobustness_Seed123.ipynb`
+
+**MacMPEC parameter-sensitivity notebooks**
+- `kaggle_setup/MPECSS_Kaggle_MacMPEC_ParamSensitivity_t0_0p1.ipynb`
+- `kaggle_setup/MPECSS_Kaggle_MacMPEC_ParamSensitivity_t0_1.ipynb`
+- `kaggle_setup/MPECSS_Kaggle_MacMPEC_ParamSensitivity_t0_10.ipynb`
+- `kaggle_setup/MPECSS_Kaggle_MacMPEC_ParamSensitivity_kappa_0p3.ipynb`
+- `kaggle_setup/MPECSS_Kaggle_MacMPEC_ParamSensitivity_kappa_0p5.ipynb`
+- `kaggle_setup/MPECSS_Kaggle_MacMPEC_ParamSensitivity_kappa_0p8.ipynb`
+
+The Kaggle-specific guide is in `kaggle_setup/README.md` and `kaggle_setup/QUICK_START.md`. Each notebook installs the package in editable mode, runs `scripts/preflight_checks.py`, and calls `kaggle_setup/resumable_benchmark.py` to write outputs to `/kaggle/working/outputs`, including a compact version note JSON.
 
 ---
 
@@ -75,6 +89,10 @@ The Kaggle-specific guide is in `kaggle_setup/README.md` and `kaggle_setup/QUICK
 
 5. **Verify installation**
    ```bash
+   # Check installed version
+   python -c "import mpecss; print(mpecss.__version__)"
+
+   # Run full preflight checks (optional)
    python scripts/preflight_checks.py
    ```
 
@@ -156,9 +174,9 @@ MPECSS ships three benchmark suites:
 
 - **MPECLib**: 92 problems
 - **MacMPEC**: 191 problems
-- **NosBench**: 603 problems split across four Kaggle notebooks (151 / 151 / 151 / 150)
+- **NosBench**: 603 problems split across six Kaggle notebooks (101 / 101 / 101 / 100 / 100 / 100)
 
-The supported path is the Kaggle notebooks under `kaggle_setup/`. Each notebook clones the repository, installs the package in editable mode, runs `scripts/preflight_checks.py`, and calls `kaggle_setup/resumable_benchmark.py` to write artifacts to `/kaggle/working/outputs`.
+The supported path is the Kaggle notebooks under `kaggle_setup/`. Each notebook clones the repository, installs the package in editable mode, runs `scripts/preflight_checks.py`, and calls `kaggle_setup/resumable_benchmark.py` to write artifacts to `/kaggle/working/outputs` plus the version note JSON.
 
 MacMPEC also includes three study notebooks for ablation, seed robustness, and parameter sensitivity experiments.
 

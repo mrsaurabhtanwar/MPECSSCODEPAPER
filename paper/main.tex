@@ -93,7 +93,7 @@ Kunwar Vijay Kumar Singh\textsuperscript{b}\thanks{CONTACT K.~V.~K.~Singh.
 % ABSTRACT
 
 \begin{abstract}
-We propose MPECSS (MPEC Stationarity Search), an open-source algorithm for solving Mathematical Programs with Equilibrium Constraints (MPECs). Standard Scholtes regularization converges only to C-stationary points in general, a comparatively weak optimality concept providing no systematic mechanism for certifying the stronger B-stationary solutions required for genuine local optimality. MPECSS is implemented in Python via CasADi and IPOPT, with no commercial dependencies, fully open-source and reproducible. Convergence analysis establishes C-stationarity under standard assumptions; furthermore, MPECSS systematically certifies B-stationarity either directly when the multiplier sign test confirms S-stationarity under MPEC-LICQ or alternatively through LPEC (Linear Program with Equilibrium Constraints) verification. MPECSS achieves convergence rates of 96.3\% [87.5\%  B-stationary among converged], 92.1\% [85.4\% B-stationary among converged] and 80\% [85.4\% B-stationary among converged] on MacMPEC, MPECLib and NOSBENCH respectively.
+We propose MPECSS (MPEC Stationarity Search), an open-source algorithm for solving Mathematical Programs with Equilibrium Constraints (MPECs). Standard Scholtes regularization converges only to C-stationary points in general, a comparatively weak optimality concept providing no systematic mechanism for certifying the stronger B-stationary solutions required for genuine local optimality. MPECSS is implemented in Python via CasADi and IPOPT, with no commercial dependencies, fully open-source and reproducible. Convergence analysis recovers the classical C-stationarity guarantee of the Scholtes path under standard assumptions; stronger B-stationarity claims are made only through Phase~III certification, either by S/B equivalence under MPEC-LICQ when the multiplier sign test passes or by completed LPEC (Linear Program with Equilibrium Constraints) verification. MPECSS achieves convergence rates of 96.3\% [87.5\%  B-stationary among converged], 92.1\% [85.4\% B-stationary among converged] and 80\% [85.4\% B-stationary among converged] on MacMPEC, MPECLib and NOSBENCH respectively.
 \end{abstract}
 
 \begin{keywords}
@@ -177,13 +177,7 @@ The authors report no funding.
 
 \section*{Data availability statement}
 
-The benchmark problem instances used in this study (MacMPEC, MPECLib,
-and NOSBENCH) are publicly available as referenced in the text. The
-checked-in repository contains the archived benchmark CSV files,
-available run-environment metadata under
-\texttt{results/outputs\_official\_*}, and the scripts used to generate
-the reported figures and tables. These materials are available at
-\url{https://github.com/mpecssalgorithm/MPECSS}.
+\raggedright The benchmark suite (MacMPEC, MPECLib, and NOSBENCH) used in this study are publicly available. MPECLib is available in \url{https://github.com/GAMS-dev/gamsworld/tree/master/MPECLib}. MacMPEC is available in \url{https://cloud.syscop.de/s/rBnTMocFoLcNLWG}. NOSBENCH is available in \url{https://github.com/nosnoc/nosbench}. All numerical results reported in this manuscript are archived in the repository at git commit \texttt{33adefe} under the \texttt{results/outputs\_official\_*} directories, along with the scripts used to generate the reported figures and tables. These materials are available at \url{https://github.com/mpecssalgorithm/MPECSS}.
 
 
 \section*{Software availability}

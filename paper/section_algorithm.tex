@@ -42,12 +42,12 @@ Scholtes~\cite{Scholtes2001} proved that limit points of the regularized sequenc
  takes a different approach: it preserves Scholtes's product relaxation which is
  numerically robust and fills the stationarity gap by combining the regularization path
  with an \emph{adaptive path-following strategy} guided by
-the \emph{multiplier sign test} (Section~\ref{sec:stationarity}). At each
-outer iteration, the sign test checks the $G$-multipliers and $H$-multipliers of
+the complementarity residual's improvement rate. At each
+outer iteration, the \emph{multiplier sign test} (Section~\ref{sec:stationarity})
+checks the $G$-multipliers and $H$-multipliers of
 $\text{NLP}(t_k)$ to confirm (or exclude) S-stationarity of the
-current iterate and uses this information to adjust $\{t_k\}$
-accordingly. The full description of this adaptive mechanism is given
-in Sections~3.3--3.4. Notably, S-stationarity implies B-stationarity by
+current iterate, successfully screening high-quality candidates. The full description of this adaptive mechanism is given
+in Section~\ref{sec:adaptive_strategy}. Notably, S-stationarity implies B-stationarity by
 Scheel and Scholtes~\citep{ScheelScholtes2000}, and under the
 MPEC-LICQ constraint qualification, S-stationarity and B-stationarity
 are equivalent. In the implementation, however, a sign-test pass is
@@ -183,11 +183,11 @@ $t_0 \gets \max(10\,r_0,\, \varepsilon_{\mathrm{tol}}\,\tau)$ to
 preserve the refined starting point and avoid redundant outer
 iterations at large $t$ values.
 
-\subsection{Phase II: Adaptive Path-Following Strategy with Sign Test}
+\subsection{Phase II: Adaptive Path-Following Strategy}
 \label{sec:adaptive_strategy}
-The main idea in MPECSS is to integrate a \emph{multiplier sign test} 
-into the regularization path-following framework to guide the sequence  
-$\{t_k\}$ towards B-stationary points~\cite{ScheelScholtes2000}. 
+The main idea in MPECSS's Phase~II is to integrate a robust residual-based 
+path-following framework to guide the sequence $\{t_k\}$, while applying a
+\emph{multiplier sign test} to screen and isolate S-stationary candidates~\cite{ScheelScholtes2000}. 
 
 \subsubsection{Solve regularized NLP subproblems}
 \label{sec:solveRegNLPs}
@@ -379,26 +379,11 @@ In all other cases---pathing mode is not sustained and the stagnation count is b
 % but is slightly less robust on problems with oscillatory complementarity
 % residuals. In practice, we use the adaptive rule above as the default.
 
-In addition to the core $t$-update, the implementation includes several
-practical safeguards for difficult problems. After Phase~I, if the
-warm-start is already nearly complementarity-feasible, the code can
-bypass Phase~II and proceed directly to Phase~III; alternatively, it can
-fast-forward the initial $t_k$. During Phase~II, every outer NLP
-solve is protected by a wall-clock guard, and solver failures trigger
-the retry configurations described in
-Section~\ref{sec:solveRegNLPs} before the current iterate is discarded.
-
-The aggressive stagnation jump (Path~3a in Algorithm~\ref{alg:phase2-update})
-is governed by a hard cap of $b = 500$ total jump triggers; exceeding
-this cap prevents unbounded adaptive cycling and the outer loop
-declares stagnation. Additionally, the implementation monitors an
-\emph{outer stagnation guard}; if the complementarity residual changes
-by less than $0.1\%$ over a sliding window of 25~iterations, the outer
-loop exits early. Algorithm~\ref{alg:phase2-update} summarizes the implemented adaptive
+Algorithm~\ref{alg:phase2-update} summarizes the implemented adaptive
 update logic.
 
 \begin{algorithm}[H]
-\caption{Phase~IIa Adaptive $t$-Update}
+\caption{Phase~II Adaptive $t$-Update}
 \label{alg:phase2-update}
 \begin{algorithmic}[1]
 \Require Current $t_k$, residuals $(r_k,r_{k-1})$, stagnation counter $s$, pathing counter $c$, biactive count history, factors $(\kappa,\alpha_L,\alpha_U)$, iteration index $k$, remaining jump budget $b$
@@ -430,8 +415,22 @@ update logic.
 \end{algorithmic}
 \end{algorithm}
 
+In addition to the core $t$-update, the implementation includes several
+practical safeguards for difficult problems. After Phase~I, if the
+warm-start is already nearly complementarity-feasible, the code can
+bypass Phase~II and proceed directly to Phase~III; alternatively, it can
+fast-forward the initial $t_k$. During Phase~II, every outer NLP
+solve is protected by a wall-clock guard, and solver failures trigger
+the retry configurations described in
+Section~\ref{sec:solveRegNLPs} before the current iterate is discarded.
 
-
+The aggressive stagnation jump (Path~3a in Algorithm~\ref{alg:phase2-update})
+is governed by a hard cap of $b = 500$ total jump triggers; exceeding
+this cap prevents unbounded adaptive cycling and the outer loop
+declares stagnation. Additionally, the implementation monitors an
+\emph{outer stagnation guard}; if the complementarity residual changes
+by less than $0.1\%$ over a sliding window of 25~iterations, the outer
+loop exits early. 
 
 \subsection{Phase III: B-Stationarity Certification}
 \label{sec:phase_iii}
@@ -443,9 +442,6 @@ the best complementarity-feasible point. In the benchmark pipeline used
 for the numerical experiments, it is then followed by BNLP polishing, an
 LPEC refinement loop, and a final post-check for B-stationarity.
 
-Algorithm~\ref{alg:phase3} summarizes the reported certification and
-refinement sequence.
-
 When Phase~II exits with $\varepsilon_{\mathrm{tol}} < r_{\mathrm{best}}
 \leq 1000\,\varepsilon_{\mathrm{tol}}$, the benchmark pipeline performs
 a final push before certification. Gentle $t$ reduction solves
@@ -456,13 +452,14 @@ BNLP polish tries the BNLP~\eqref{eq:phase_i} at multiple active-set
 tolerances and accepts only if it improves $r_{\mathrm{comp}}$.
 Partition flipping flips, for each biactive index, the active-set
 assignment $G_\ell = 0 \leftrightarrow H_\ell = 0$ and re-solves the
-BNLP to find a feasible partition. If all strategies fail but $r_{\mathrm{best}}$
-\leq 10\,\varepsilon_{\mathrm{tol}}$, the point is accepted under a
+BNLP to find a feasible partition. If all strategies fail but
+$r_{\mathrm{best}} \leq 10\,\varepsilon_{\mathrm{tol}}$, the point is accepted under a
 relaxed tolerance and classified as C-stationary. This three-strategy
-cascade recovers problems whose homotopy residual is only slightly
-above the target tolerance.
+cascade recovers problems whose residual is only slightly
+above the target tolerance. Algorithm~\ref{alg:phase3} summarizes the reported certification and
+refinement sequence.
 
-\begin{algorithm}[htbp]
+\begin{algorithm}[H]
 \caption{Phase~III B-Stationarity Certification and Refinement}
 \label{alg:phase3}
 \begin{algorithmic}[1]
@@ -482,9 +479,9 @@ above the target tolerance.
 \end{algorithmic}
 \end{algorithm}
 
-\emph{Direct certification under sign test plus MPEC-LICQ:} If the final iterate passes the multiplier sign test and MPEC-LICQ holds at that point, then the implementation certifies B-stationarity by the equivalence between S- and B-stationarity under MPEC-LICQ.
+If the final iterate passes the multiplier sign test and MPEC-LICQ holds at that point, then the implementation certifies B-stationarity by the equivalence between S- and B-stationarity under MPEC-LICQ.
 
-\emph{BNLP polishing:} Even a good solution can be numerically rough. We solve a final simplified problem (BNLP) by fixing an active-set partition. Given index sets $\mathcal{I}_1 = \{\ell : G_\ell(x^*) \approx 0\}$ and $\mathcal{I}_2 = \{\ell : H_\ell(x^*) \approx 0\}$, the BNLP subproblem is:
+Even a good solution can be numerically rough. We solve a final simplified problem (BNLP) by fixing an active-set partition. Given index sets $\mathcal{I}_1 = \{\ell : G_\ell(x^*) \approx 0\}$ and $\mathcal{I}_2 = \{\ell : H_\ell(x^*) \approx 0\}$, the BNLP subproblem is:
 \begin{equation}
 \begin{aligned}
   \text{BNLP}(x^*,\mathcal{I}_1,\mathcal{I}_2): \quad & \min_{x \in \mathbb{R}^n} \; f(x) \\
@@ -505,7 +502,7 @@ post-check may still relabel near-feasible failures with
 $r_{\mathrm{comp}} \le 10\,\varepsilon_{\mathrm{tol}}$ after the final
 B-stationarity check.
 
-\emph{LPEC-based certification and refinement:} If sign test plus LICQ
+If sign test plus LICQ
 do not already certify the point, we use the geometric LPEC check to
 determine whether a feasible descent direction exists~\cite{LuoPangRalph1996,FletcherLeyfferRalphScholtes2006}.
 The implemented LP model includes the active original constraints,
@@ -529,9 +526,9 @@ $tol_B = 10^{-10}$, and $tol_{\mathrm{comp}} = 10^{-8}$.
 In the reported experiments, every problem is post-processed by the full
 benchmark pipeline: the Phase~II output is passed through BNLP
 polishing, LPEC refinement, and a final B-stationarity post-check,
-even when the initial sign test is favorable. This benchmark harness is
-therefore slightly richer than a bare call to \texttt{run\_mpecss()},
-and the numerical section reports the output of that harness rather than
+even when the initial sign test is favorable. This benchmark pipelineis
+therefore slightly richer than a direct call to \texttt{run\_mpecss()},
+and the numerical section reports the output of that pipeline rather than
 the raw Phase~II endpoint alone.
 
 

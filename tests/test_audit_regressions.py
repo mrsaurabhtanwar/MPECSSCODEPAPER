@@ -727,6 +727,15 @@ def test_write_run_env_records_cli_and_git_provenance(monkeypatch) -> None:
     assert payload["git"]["dirty"] is True
     assert payload["git"]["dirty_excluding_results"] is True
     assert payload["git"]["code_status_porcelain"] == [" M mpecss/helpers/benchmark_utils.py"]
+    assert payload["result_artifacts"]["run_env"] == env_path
+
+    version_note_path = str(Path("virtual_results") / "toyset_version_note_Official_20260404_123000.json")
+    assert payload["result_artifacts"]["version_note"] == version_note_path
+    note_payload = json.loads(written[version_note_path])
+    assert note_payload["dataset_tag"] == "toyset"
+    assert note_payload["benchmark_status"] == "started"
+    assert note_payload["run_environment_snapshot"] == env_path
+    assert note_payload["git"]["commit"] == "abc1234"
 
 
 def test_hydrate_queue_result_recovers_full_row_from_artifact(monkeypatch) -> None:

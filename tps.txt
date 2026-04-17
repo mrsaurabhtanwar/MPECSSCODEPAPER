@@ -1,0 +1,7 @@
+Step 6: Run the Notebook
+Click "Run All" or run cells one by one
+The benchmark will:
+Clone the repository
+Install dependencies
+Run all problems
+Save results, here please make the run with version save note just simple cell or local run 
